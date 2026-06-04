@@ -1,0 +1,1169 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Vitalis</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@600;900&family=Inter:wght@300;400;500;600&display=swap');
+
+:root {
+  --hp: #ff4d4d; --hp2: #8b0000;
+  --mp: #4d8fff; --mp2: #00174d;
+  --bg: #0c0c12; --card: #13131f; --card2: #1a1a2a;
+  --border: #ffffff12; --text: #f0ebe0; --dim: #6b6580;
+  --gold: #d4a84b; --green: #4dff88;
+  --enemy: #ff8c00; --enemy2: #7a3800;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bot: env(safe-area-inset-bottom, 0px);
+}
+
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+html { height:100%; touch-action:manipulation; }
+
+body {
+  background:var(--bg); color:var(--text);
+  font-family:'Inter',system-ui,sans-serif;
+  min-height:100vh; min-height:-webkit-fill-available;
+  overflow-x:hidden;
+  padding-top:var(--safe-top);
+  padding-bottom:calc(var(--safe-bot) + 70px);
+}
+
+body::before {
+  content:''; position:fixed; inset:0; z-index:0; pointer-events:none;
+  background:
+    radial-gradient(ellipse 50% 35% at 15% 20%, rgba(139,0,0,0.12) 0%, transparent 70%),
+    radial-gradient(ellipse 50% 35% at 85% 75%, rgba(0,23,77,0.14) 0%, transparent 70%);
+}
+
+.wrap { position:relative; z-index:1; max-width:430px; margin:0 auto; }
+
+/* TAB BAR */
+.tabbar {
+  position:fixed; bottom:0; left:0; right:0; z-index:100;
+  background:rgba(16,16,26,0.93);
+  backdrop-filter:blur(24px); -webkit-backdrop-filter:blur(24px);
+  border-top:1px solid var(--border);
+  display:flex; padding-bottom:var(--safe-bot);
+}
+.tab-item {
+  flex:1; display:flex; flex-direction:column; align-items:center;
+  padding:10px 0 6px; background:none; border:none; color:var(--dim);
+  font-size:0.58rem; font-family:'Inter',sans-serif;
+  font-weight:500; letter-spacing:0.04em; cursor:pointer; gap:4px;
+  transition:color 0.18s; touch-action:manipulation;
+}
+.tab-item .icon { font-size:1.3rem; line-height:1; }
+.tab-item.active { color:var(--gold); }
+
+/* PANELS */
+.panel { display:none; padding:16px 14px; }
+.panel.active { display:block; }
+
+/* STAT CARDS ROW — sticky */
+.stat-cards-row {
+  display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:12px;
+  position:sticky; top:var(--safe-top); z-index:40;
+  background:rgba(12,12,18,0.92);
+  backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px);
+  padding:8px 14px;
+  margin-left:-14px; margin-right:-14px;
+}
+.stat-card {
+  background:var(--card); border:1px solid var(--border);
+  border-radius:14px; padding:10px 12px;
+  position:relative; overflow:hidden;
+}
+.stat-card::after {
+  content:''; position:absolute; top:0; left:0; right:0;
+  height:2px; border-radius:14px 14px 0 0;
+}
+.stat-card.hp::after { background:linear-gradient(90deg,var(--hp2),var(--hp),var(--hp2)); }
+.stat-card.mp::after { background:linear-gradient(90deg,var(--mp2),var(--mp),var(--mp2)); }
+
+.stat-top { display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; }
+.stat-meta { display:flex; flex-direction:column; gap:2px; }
+.stat-label { font-family:'Cinzel',serif; font-size:0.65rem; font-weight:600; letter-spacing:0.15em; }
+.hp .stat-label { color:var(--hp); }
+.mp .stat-label { color:var(--mp); }
+.stat-regen { font-size:0.65rem; color:var(--dim); }
+.stat-value { font-size:1.4rem; font-weight:300; line-height:1; font-variant-numeric:tabular-nums; }
+.stat-value small { font-size:0.75rem; color:var(--dim); font-weight:400; }
+
+.drain-badges { display:flex; flex-wrap:wrap; gap:3px; margin-top:4px; }
+.dbadge {
+  display:inline-flex; align-items:center; gap:3px;
+  background:rgba(204,68,255,0.12); border:1px solid rgba(204,68,255,0.35);
+  border-radius:20px; padding:1px 7px; font-size:0.6rem; color:#cc88ff;
+  animation:pulse-d 1.5s ease-in-out infinite;
+}
+.dbadge.hp-d { background:rgba(255,140,0,0.12); border-color:rgba(255,140,0,0.35); color:#ffaa44; }
+@keyframes pulse-d { 0%,100%{opacity:1} 50%{opacity:0.5} }
+
+.bar-bg { height:6px; background:rgba(255,255,255,0.06); border-radius:4px; overflow:hidden; margin-bottom:4px; }
+.bar-fill { height:100%; border-radius:4px; transition:width 0.5s ease; position:relative; }
+.hp .bar-fill { background:linear-gradient(90deg,var(--hp2),var(--hp)); box-shadow:0 0 8px rgba(255,77,77,0.4); }
+.mp .bar-fill { background:linear-gradient(90deg,var(--mp2),var(--mp)); box-shadow:0 0 8px rgba(77,143,255,0.4); }
+.bar-fill::after { content:''; position:absolute; top:0; left:0; right:0; height:45%; background:rgba(255,255,255,0.18); border-radius:4px 4px 0 0; }
+
+/* SECTION TITLE */
+.sec-title { font-size:0.65rem; font-weight:600; letter-spacing:0.18em; text-transform:uppercase; color:var(--dim); margin-bottom:10px; }
+
+/* INPUTS */
+.num-input {
+  flex:1; background:var(--card2); border:1px solid var(--border);
+  border-radius:12px; color:var(--text); font-size:1.1rem;
+  font-family:'Inter',sans-serif; padding:12px 14px;
+  text-align:center; outline:none; -webkit-appearance:none;
+}
+.num-input:focus { border-color:var(--gold); }
+.input-row { display:flex; gap:8px; margin-bottom:10px; }
+
+/* BUTTONS */
+.btn-row { display:flex; gap:8px; margin-bottom:12px; }
+.big-btn {
+  flex:1; border-radius:14px; border:1px solid;
+  font-family:'Inter',sans-serif; font-weight:600; font-size:0.82rem;
+  padding:14px 8px; cursor:pointer; transition:all 0.15s;
+  display:flex; flex-direction:column; align-items:center; gap:2px;
+  touch-action:manipulation;
+}
+.big-btn:active { transform:scale(0.95); }
+.big-btn .btn-icon { font-size:1.1rem; }
+.big-btn .btn-label { font-size:0.65rem; letter-spacing:0.08em; opacity:0.7; }
+.btn-dmg  { background:rgba(139,0,0,0.2);  border-color:rgba(255,77,77,0.4);  color:var(--hp); }
+.btn-heal { background:rgba(0,100,40,0.2); border-color:rgba(77,255,136,0.4); color:var(--green); }
+.btn-cast { background:rgba(0,23,77,0.3);  border-color:rgba(77,143,255,0.4); color:var(--mp); }
+.btn-mpup { background:rgba(40,0,80,0.2);  border-color:rgba(160,100,255,0.4);color:#b388ff; }
+
+/* PRESET GRID */
+.presets-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:14px; }
+.preset-btn {
+  background:var(--card); border:1px solid var(--border);
+  border-radius:14px; padding:12px 6px; cursor:pointer;
+  text-align:center; transition:all 0.15s;
+  display:flex; flex-direction:column; align-items:center; gap:3px;
+  touch-action:manipulation;
+}
+.preset-btn:active { transform:scale(0.93); }
+.preset-btn .p-name { font-size:0.68rem; color:var(--dim); font-weight:500; }
+.preset-btn .p-val  { font-size:1rem; font-weight:600; }
+.preset-btn.mp-p .p-val { color:var(--mp); }
+.preset-btn.mp-p:active { background:rgba(0,23,77,0.4); border-color:var(--mp); }
+.preset-btn.hp-p .p-val { color:var(--hp); }
+.preset-btn.hp-p:active { background:rgba(139,0,0,0.3); border-color:var(--hp); }
+.preset-btn.mp-drain-on { background:rgba(204,68,255,0.18); border-color:rgba(204,68,255,0.6); }
+.preset-btn.mp-drain-on .p-val { color:#cc88ff; animation:pulse-d 1.5s infinite; }
+.preset-btn.hp-drain-on { background:rgba(255,140,0,0.18); border-color:rgba(255,140,0,0.6); }
+.preset-btn.hp-drain-on .p-val { color:#ffaa44; animation:pulse-d 1.5s infinite; }
+
+/* LOG */
+.log-box { background:var(--card); border:1px solid var(--border); border-radius:16px; padding:14px 16px; }
+.log-scroll { max-height:160px; overflow-y:auto; }
+.log-scroll::-webkit-scrollbar { width:3px; }
+.log-scroll::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
+.log-item { display:flex; justify-content:space-between; align-items:center; padding:5px 0; border-bottom:1px solid rgba(255,255,255,0.04); font-size:0.78rem; gap:8px; }
+.log-item:last-child { border-bottom:none; }
+.log-txt { flex:1; } .log-t { color:var(--dim); font-size:0.68rem; flex-shrink:0; }
+.pos{color:var(--green);} .neg-hp{color:var(--hp);} .neg-mp{color:var(--mp);} .info{color:var(--gold);}
+
+/* ══ ENEMY TAB ══ */
+.enemy-select-wrap {
+  background:var(--card); border:1px solid var(--border);
+  border-radius:14px; padding:14px 16px; margin-bottom:12px;
+}
+.enemy-select-wrap select {
+  width:100%; background:var(--card2); border:1px solid var(--border);
+  border-radius:10px; color:var(--text); font-size:1rem;
+  font-family:'Inter',sans-serif; padding:12px 14px;
+  outline:none; -webkit-appearance:none; appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%236b6580' d='M6 8L0 0h12z'/%3E%3C/svg%3E");
+  background-repeat:no-repeat; background-position:right 14px center;
+}
+
+.enemy-card {
+  background:var(--card); border:1px solid rgba(255,140,0,0.25);
+  border-radius:16px; padding:16px; margin-bottom:12px;
+  position:relative; overflow:hidden;
+}
+.enemy-card::after {
+  content:''; position:absolute; top:0; left:0; right:0; height:2px;
+  background:linear-gradient(90deg,var(--enemy2),var(--enemy),var(--enemy2));
+}
+.enemy-name {
+  font-family:'Cinzel',serif; font-size:1rem; font-weight:600;
+  color:var(--enemy); letter-spacing:0.1em; margin-bottom:14px;
+}
+
+/* attack buttons */
+.attack-row { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:14px; }
+.atk-btn {
+  border-radius:14px; border:1px solid; padding:14px 8px;
+  font-family:'Inter',sans-serif; font-weight:600; font-size:0.9rem;
+  cursor:pointer; transition:all 0.15s; text-align:center;
+  touch-action:manipulation;
+}
+.atk-btn:active { transform:scale(0.95); }
+.atk-btn .atk-label { font-size:0.65rem; display:block; opacity:0.7; margin-bottom:2px; }
+.atk-btn .atk-val { font-size:1.3rem; font-weight:300; }
+.atk-str { background:rgba(139,0,0,0.2); border-color:rgba(255,77,77,0.4); color:var(--hp); }
+.atk-mag { background:rgba(0,23,77,0.3); border-color:rgba(77,143,255,0.4); color:var(--mp); }
+
+/* COMPARISON TABLE */
+.cmp-table { width:100%; border-collapse:collapse; font-size:0.8rem; }
+.cmp-table th {
+  font-family:'Cinzel',serif; font-size:0.65rem; letter-spacing:0.1em;
+  color:var(--dim); font-weight:600; padding:4px 6px; text-align:center;
+}
+.cmp-table th:first-child { text-align:left; }
+.cmp-table td { padding:6px 6px; text-align:center; border-bottom:1px solid var(--border); }
+.cmp-table td:first-child { text-align:left; color:var(--dim); font-size:0.75rem; }
+.cmp-table tr:last-child td { border-bottom:none; }
+.cmp-me   { color:var(--green); font-weight:600; }
+.cmp-them { color:var(--enemy); font-weight:600; }
+.cmp-win  { color:var(--green); }
+.cmp-lose { color:var(--hp); }
+.cmp-even { color:var(--dim); }
+
+/* stat bar in comparison */
+.cmp-bar-wrap { display:flex; align-items:center; gap:4px; }
+.cmp-bar-bg { flex:1; height:4px; background:rgba(255,255,255,0.06); border-radius:2px; overflow:hidden; }
+.cmp-bar-me   { height:100%; border-radius:2px; background:var(--green); transition:width 0.4s; }
+.cmp-bar-them { height:100%; border-radius:2px; background:var(--enemy); transition:width 0.4s; }
+
+/* SETTINGS */
+.set-card { background:var(--card); border:1px solid var(--border); border-radius:18px; padding:18px 18px 12px; margin-bottom:12px; }
+.set-card h3 { font-family:'Cinzel',serif; font-size:0.78rem; letter-spacing:0.15em; margin-bottom:14px; }
+.hp-col h3{color:var(--hp);} .mp-col h3{color:var(--mp);}
+.set-row { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; gap:12px; }
+.set-row label { font-size:0.88rem; color:var(--text); flex:1; }
+.set-row small { display:block; color:var(--dim); font-size:0.72rem; margin-top:2px; }
+.set-inp {
+  background:var(--card2); border:1px solid var(--border); border-radius:10px;
+  color:var(--text); font-size:0.95rem; font-family:'Inter',sans-serif;
+  padding:8px 10px; width:88px; text-align:center; outline:none; -webkit-appearance:none;
+}
+.set-inp:focus { border-color:var(--gold); }
+.set-inp-wide { width:auto; flex:1; }
+
+.prow { display:flex; gap:8px; align-items:center; margin-bottom:10px; }
+.pname-inp {
+  flex:1; background:var(--card2); border:1px solid var(--border);
+  border-radius:8px; color:var(--text); font-size:0.82rem; padding:8px 10px; outline:none;
+  font-family:'Inter',sans-serif;
+}
+.pname-inp:focus { border-color:var(--gold); }
+.pval-inp {
+  background:var(--card2); border:1px solid var(--border); border-radius:8px;
+  color:var(--text); font-size:0.82rem; padding:8px 8px; width:60px;
+  text-align:center; outline:none; font-family:'Inter',sans-serif; -webkit-appearance:none;
+}
+.pval-inp:focus { border-color:var(--gold); }
+
+.dtype-toggle { display:flex; border-radius:8px; overflow:hidden; border:1px solid var(--border); flex-shrink:0; }
+.dtype-btn { padding:6px 10px; background:var(--card2); border:none; font-size:0.7rem; font-family:'Inter',sans-serif; font-weight:500; cursor:pointer; color:var(--dim); }
+.dtype-btn.sel-once  { background:rgba(77,143,255,0.25); color:var(--mp); }
+.dtype-btn.sel-drain { background:rgba(204,68,255,0.25); color:#cc88ff; }
+
+.add-preset-btn { background:rgba(77,255,136,0.08); border:1px solid rgba(77,255,136,0.3); border-radius:10px; color:var(--green); padding:8px 14px; font-size:0.75rem; cursor:pointer; font-family:'Inter',sans-serif; }
+.rm-preset-btn  { background:rgba(255,77,77,0.08);  border:1px solid rgba(255,77,77,0.3);  border-radius:10px; color:var(--hp);    padding:8px 14px; font-size:0.75rem; cursor:pointer; font-family:'Inter',sans-serif; }
+
+/* enemy editor */
+.enemy-editor-item {
+  background:var(--card2); border:1px solid var(--border);
+  border-radius:12px; margin-bottom:10px; overflow:hidden;
+}
+.enemy-editor-header {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:12px 14px; cursor:pointer; touch-action:manipulation;
+}
+.enemy-editor-header span { font-size:0.9rem; font-weight:500; color:var(--enemy); }
+.enemy-editor-body { padding:12px 14px; border-top:1px solid var(--border); display:none; }
+.enemy-editor-body.open { display:block; }
+.enemy-stat-row { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:8px; }
+.enemy-stat-inp-wrap { display:flex; flex-direction:column; gap:4px; }
+.enemy-stat-inp-wrap label { font-size:0.7rem; color:var(--dim); }
+.enemy-stat-inp {
+  background:var(--card); border:1px solid var(--border); border-radius:8px;
+  color:var(--text); font-size:0.9rem; padding:8px 10px;
+  text-align:center; outline:none; font-family:'Inter',sans-serif; -webkit-appearance:none;
+}
+.enemy-stat-inp:focus { border-color:var(--enemy); }
+.enemy-del-btn { background:rgba(255,77,77,0.08); border:1px solid rgba(255,77,77,0.3); border-radius:8px; color:var(--hp); padding:6px 12px; font-size:0.75rem; cursor:pointer; font-family:'Inter',sans-serif; margin-top:8px; }
+
+.save-btn {
+  width:100%; padding:16px; border-radius:16px; margin-bottom:10px;
+  background:linear-gradient(135deg,rgba(212,168,75,0.2),rgba(212,168,75,0.08));
+  border:1px solid var(--gold); color:var(--gold);
+  font-family:'Cinzel',serif; font-size:0.85rem; letter-spacing:0.15em; cursor:pointer;
+}
+.save-btn:active { transform:scale(0.98); }
+.reset-btn { width:100%; padding:12px; border-radius:14px; background:transparent; border:1px solid rgba(255,77,77,0.25); color:rgba(255,77,77,0.5); font-family:'Inter',sans-serif; font-size:0.8rem; cursor:pointer; }
+
+/* CRIT FLASH */
+@keyframes crit-flash { 0%{background:rgba(255,30,30,0.0)} 20%{background:rgba(255,30,30,0.55)} 100%{background:rgba(255,30,30,0.0)} }
+.crit-overlay { position:fixed; inset:0; z-index:999; pointer-events:none; animation:crit-flash 0.5s ease-out forwards; }
+
+.divider { height:1px; background:var(--border); margin:14px 0; }
+
+#toast {
+  position:fixed; bottom:calc(78px + var(--safe-bot)); left:50%;
+  transform:translateX(-50%) translateY(40px);
+  background:#1c1c2e; border:1px solid var(--gold); color:var(--gold);
+  font-size:0.82rem; font-weight:500; padding:10px 22px; border-radius:24px;
+  z-index:200; pointer-events:none; opacity:0; white-space:nowrap;
+  transition:transform 0.25s ease, opacity 0.25s ease;
+}
+#toast.show { transform:translateX(-50%) translateY(0); opacity:1; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- ═══ TRACKER ═══ -->
+  <div class="panel active" id="panel-tracker">
+    <div class="stat-cards-row">
+      <div class="stat-card hp">
+        <div class="stat-top">
+          <div class="stat-meta">
+            <span class="stat-label">❤ LEBEN</span>
+            <span class="stat-regen" id="hp-regen-txt"></span>
+          </div>
+          <div class="stat-value" id="hp-val">100 <small>/ 100</small></div>
+        </div>
+        <div class="bar-bg"><div class="bar-fill" id="hp-bar" style="width:100%"></div></div>
+        <div class="drain-badges" id="hp-drain-badges"></div>
+      </div>
+      <div class="stat-card mp">
+        <div class="stat-top">
+          <div class="stat-meta">
+            <span class="stat-label">✦ MANA</span>
+            <span class="stat-regen" id="mp-regen-txt"></span>
+          </div>
+          <div class="stat-value" id="mp-val">60 <small>/ 60</small></div>
+        </div>
+        <div class="bar-bg"><div class="bar-fill" id="mp-bar" style="width:100%"></div></div>
+        <div class="drain-badges" id="mp-drain-badges"></div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+    <p class="sec-title">Leben</p>
+    <div class="input-row">
+      <input type="number" class="num-input" id="hp-in" placeholder="Menge" min="0" inputmode="numeric">
+    </div>
+    <div class="btn-row">
+      <button class="big-btn btn-dmg"  onclick="modHP(-1)"><span class="btn-icon">💥</span>Schaden<span class="btn-label">ABZIEHEN</span></button>
+      <button class="big-btn btn-heal" onclick="modHP(1)"><span class="btn-icon">💚</span>Heilen<span class="btn-label">HINZUFÜGEN</span></button>
+    </div>
+    <div class="presets-grid" id="hp-presets"></div>
+
+    <div class="divider"></div>
+    <p class="sec-title">Mana</p>
+    <div class="input-row">
+      <input type="number" class="num-input" id="mp-in" placeholder="Menge" min="0" inputmode="numeric">
+    </div>
+    <div class="btn-row">
+      <button class="big-btn btn-cast" onclick="modMP(-1)"><span class="btn-icon">🔮</span>Zaubern<span class="btn-label">VERBRAUCHEN</span></button>
+      <button class="big-btn btn-mpup" onclick="modMP(1)"><span class="btn-icon">✨</span>Aufladen<span class="btn-label">HINZUFÜGEN</span></button>
+    </div>
+    <div class="presets-grid" id="mp-presets"></div>
+
+    <div class="divider"></div>
+    <div class="log-box">
+      <p class="sec-title">Kampflog</p>
+      <div class="log-scroll" id="log-list"><span style="color:var(--dim);font-size:.8rem;font-style:italic">Noch nichts passiert…</span></div>
+    </div>
+  </div>
+
+  <!-- ═══ ENEMY TAB ═══ -->
+  <div class="panel" id="panel-enemy">
+
+    <!-- sticky bars (gespiegelt vom Tracker) -->
+    <div class="stat-cards-row">
+      <div class="stat-card hp">
+        <div class="stat-top">
+          <div class="stat-meta">
+            <span class="stat-label">❤ LEBEN</span>
+            <span class="stat-regen" id="hp-regen-txt2"></span>
+          </div>
+          <div class="stat-value" id="hp-val2">100 <small>/ 100</small></div>
+        </div>
+        <div class="bar-bg"><div class="bar-fill" id="hp-bar2" style="width:100%"></div></div>
+      </div>
+      <div class="stat-card mp">
+        <div class="stat-top">
+          <div class="stat-meta">
+            <span class="stat-label">✦ MANA</span>
+            <span class="stat-regen" id="mp-regen-txt2"></span>
+          </div>
+          <div class="stat-value" id="mp-val2">60 <small>/ 60</small></div>
+        </div>
+        <div class="bar-bg"><div class="bar-fill" id="mp-bar2" style="width:100%"></div></div>
+      </div>
+    </div>
+
+    <p class="sec-title">Gegner auswählen</p>
+    <div class="enemy-select-wrap">
+      <select id="enemy-select" onchange="selectEnemy()">
+        <option value="">— Kein Gegner ausgewählt —</option>
+      </select>
+    </div>
+
+    <div id="enemy-active" style="display:none">
+      <div class="enemy-card">
+        <div class="enemy-name" id="enemy-active-name">Ratte</div>
+        <div class="attack-row">
+          <button class="atk-btn atk-str" onclick="enemyAttack('str')" id="atk-str-btn">
+            <span class="atk-label">⚔ ANGRIFF</span>
+            <span class="atk-val" id="atk-str-val">10</span>
+            <span class="atk-label">Schaden</span>
+          </button>
+          <button class="atk-btn atk-mag" onclick="enemyAttack('mag')" id="atk-mag-btn">
+            <span class="atk-label">🔮 MAGIE</span>
+            <span class="atk-val" id="atk-mag-val">5</span>
+            <span class="atk-label">Schaden</span>
+          </button>
+        </div>
+        <p class="sec-title" style="margin-top:4px">Gegenüberstellung</p>
+        <table class="cmp-table" id="cmp-table"></table>
+      </div>
+    </div>
+
+    <div id="enemy-empty" style="text-align:center;padding:20px;color:var(--dim);font-size:0.85rem;font-style:italic">
+      Wähle einen Gegner aus oder erstelle einen in den Einstellungen
+    </div>
+
+    <div class="divider"></div>
+    <p class="sec-title">Mana</p>
+    <div class="presets-grid" id="mp-presets2"></div>
+
+  </div>
+
+  <!-- ═══ SETTINGS ═══ -->
+  <div class="panel" id="panel-settings">
+
+    <!-- HP -->
+    <div class="set-card hp-col">
+      <h3>❤ LEBEN</h3>
+      <div class="set-row">
+        <label>Maximum<small>Dein max. Leben</small></label>
+        <input type="number" class="set-inp" id="s-hp-max" inputmode="numeric">
+      </div>
+      <div class="set-row" style="flex-direction:column;align-items:flex-start;gap:8px">
+        <label>Regeneration</label>
+        <div style="display:flex;gap:8px;width:100%;align-items:center">
+          <input type="number" class="set-inp" id="s-hp-ramt" step="0.1" inputmode="decimal" style="flex:1;width:auto">
+          <span style="color:var(--dim);font-size:.85rem">pro</span>
+          <input type="number" class="set-inp" id="s-hp-rint" step="1" min="1" inputmode="numeric" style="flex:1;width:auto">
+          <span style="color:var(--dim);font-size:.85rem">Sek</span>
+        </div>
+      </div>
+      <div class="set-row">
+        <label>Krit-Chance<small>% Chance auf ×2 Schaden</small></label>
+        <input type="number" class="set-inp" id="s-crit-chance" min="0" max="100" inputmode="numeric">
+      </div>
+      <div id="heal-time-info" style="margin-top:4px;padding:10px 12px;background:rgba(255,77,77,0.06);border:1px solid rgba(255,77,77,0.15);border-radius:10px;font-size:0.78rem;color:var(--dim)"></div>
+    </div>
+
+    <!-- MP -->
+    <div class="set-card mp-col">
+      <h3>✦ MANA</h3>
+      <div class="set-row">
+        <label>Maximum<small>Dein max. Mana</small></label>
+        <input type="number" class="set-inp" id="s-mp-max" inputmode="numeric">
+      </div>
+      <div class="set-row" style="flex-direction:column;align-items:flex-start;gap:8px">
+        <label>Regeneration</label>
+        <div style="display:flex;gap:8px;width:100%;align-items:center">
+          <input type="number" class="set-inp" id="s-mp-ramt" step="0.1" inputmode="decimal" style="flex:1;width:auto">
+          <span style="color:var(--dim);font-size:.85rem">pro</span>
+          <input type="number" class="set-inp" id="s-mp-rint" step="1" min="1" inputmode="numeric" style="flex:1;width:auto">
+          <span style="color:var(--dim);font-size:.85rem">Sek</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- MY STATS -->
+    <div class="set-card">
+      <h3 style="color:var(--green)">👤 MEINE STATS</h3>
+      <p style="font-size:0.75rem;color:var(--dim);margin-bottom:14px;font-style:italic">Nur für den Vergleich mit Gegnern</p>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div class="enemy-stat-inp-wrap"><label>Stärke</label><input type="number" class="enemy-stat-inp" id="my-staerke" inputmode="numeric"></div>
+        <div class="enemy-stat-inp-wrap"><label>Magie</label><input type="number" class="enemy-stat-inp" id="my-magie" inputmode="numeric"></div>
+        <div class="enemy-stat-inp-wrap"><label>Leben</label><input type="number" class="enemy-stat-inp" id="my-leben" inputmode="numeric"></div>
+        <div class="enemy-stat-inp-wrap"><label>Geschwindigkeit</label><input type="number" class="enemy-stat-inp" id="my-geschw" inputmode="numeric"></div>
+        <div class="enemy-stat-inp-wrap"><label>Ausdauer</label><input type="number" class="enemy-stat-inp" id="my-ausdauer" inputmode="numeric"></div>
+        <div class="enemy-stat-inp-wrap"><label>Intelligenz</label><input type="number" class="enemy-stat-inp" id="my-intel" inputmode="numeric"></div>
+      </div>
+    </div>
+
+    <!-- MP PRESETS -->
+    <div class="set-card">
+      <h3 style="color:var(--mp)">✦ MANA PRESETS</h3>
+      <p style="font-size:0.72rem;color:var(--dim);margin-bottom:14px;font-style:italic">Einmalig = einmal abziehen | Drain = läuft bis Stop</p>
+      <div id="mp-ped"></div>
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <button class="add-preset-btn" onclick="addPreset('mp')">+ Hinzufügen</button>
+        <button class="rm-preset-btn"  onclick="rmPreset('mp')">− Entfernen</button>
+      </div>
+    </div>
+
+    <!-- HP PRESETS -->
+    <div class="set-card">
+      <h3 style="color:var(--hp)">❤ LEBEN PRESETS</h3>
+      <p style="font-size:0.72rem;color:var(--dim);margin-bottom:14px;font-style:italic">Einmalig = einmal abziehen | Drain = läuft bis Stop</p>
+      <div id="hp-ped"></div>
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <button class="add-preset-btn" onclick="addPreset('hp')">+ Hinzufügen</button>
+        <button class="rm-preset-btn"  onclick="rmPreset('hp')">− Entfernen</button>
+      </div>
+    </div>
+
+    <!-- ENEMY PRESETS -->
+    <div class="set-card">
+      <h3 style="color:var(--enemy)">👹 GEGNER</h3>
+      <p style="font-size:0.72rem;color:var(--dim);margin-bottom:14px;font-style:italic">Stärke÷10 = Angriff | Magie÷10 = Magieschaden</p>
+      <div id="enemy-ped"></div>
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <button class="add-preset-btn" onclick="addEnemy()">+ Gegner</button>
+      </div>
+    </div>
+
+    <button class="save-btn" onclick="saveSettings()">✓ SPEICHERN</button>
+
+    <!-- STATISTICS -->
+    <div class="set-card" style="margin-top:8px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;cursor:pointer" onclick="toggleStats()">
+        <h3 style="color:var(--dim);margin:0">📊 STATISTIKEN</h3>
+        <span style="color:var(--dim);font-size:0.75rem" id="stats-arrow">▼ anzeigen</span>
+      </div>
+      <div id="stats-body" style="display:none">
+        <div id="stats-content"></div>
+        <button onclick="resetStats()" style="margin-top:10px;width:100%;padding:10px;border-radius:10px;background:transparent;border:1px solid rgba(255,77,77,0.25);color:rgba(255,77,77,0.5);font-family:'Inter',sans-serif;font-size:0.75rem;cursor:pointer">Statistiken zurücksetzen</button>
+      </div>
+    </div>
+
+    <!-- BACKUP -->
+    <div class="set-card" style="margin-top:8px">
+      <h3 style="color:var(--gold);margin-bottom:10px">💾 BACKUP</h3>
+      <p style="font-size:0.75rem;color:var(--dim);margin-bottom:12px;font-style:italic">Daten sichern bevor du die App neu installierst</p>
+      <button onclick="exportData()" style="width:100%;padding:13px;border-radius:12px;background:rgba(212,168,75,0.1);border:1px solid rgba(212,168,75,0.4);color:var(--gold);font-family:'Inter',sans-serif;font-size:0.85rem;font-weight:600;cursor:pointer;margin-bottom:8px;touch-action:manipulation">📤 Daten exportieren (kopieren)</button>
+      <textarea id="import-field" placeholder="Export-Text hier einfügen..." style="width:100%;background:var(--card2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:0.75rem;padding:10px;outline:none;font-family:'Inter',sans-serif;resize:none;min-height:60px;margin-bottom:8px"></textarea>
+      <button onclick="importData()" style="width:100%;padding:13px;border-radius:12px;background:rgba(77,255,136,0.08);border:1px solid rgba(77,255,136,0.3);color:var(--green);font-family:'Inter',sans-serif;font-size:0.85rem;font-weight:600;cursor:pointer;touch-action:manipulation">📥 Daten importieren</button>
+    </div>
+
+    <button class="reset-btn" onclick="resetAll()">Alles zurücksetzen</button>
+  </div>
+</div>
+
+<!-- TAB BAR -->
+<nav class="tabbar">
+  <button class="tab-item active" id="tab-tracker" onclick="showTab('tracker',this)"><span class="icon">⚔️</span>Tracker</button>
+  <button class="tab-item" id="tab-enemy" onclick="showTab('enemy',this)"><span class="icon">👹</span>Gegner</button>
+  <button class="tab-item" id="tab-settings" onclick="showTab('settings',this)"><span class="icon">⚙️</span>Einst.</button>
+</nav>
+
+<div id="toast"></div>
+
+<script>
+const STAT_KEYS = ['staerke','magie','leben','geschw','ausdauer','intel'];
+const STAT_LABELS = ['Stärke','Magie','Leben','Geschwindigkeit','Ausdauer','Intelligenz'];
+
+let S = {
+  hp:100, mp:60,
+  hpMax:100, mpMax:60,
+  hpRegenAmt:1, hpRegenInterval:60,
+  mpRegenAmt:1, mpRegenInterval:1,
+  critChance:10,
+  lastUpdate:Date.now(),
+  log:[],
+  myStats:{staerke:0,magie:0,leben:0,geschw:0,ausdauer:0,intel:0},
+  mpPresets:[
+    {name:'Feuerball',val:25,type:'once',interval:1,visible:true,desc:'',useCount:0,drainSecs:0},
+    {name:'Blitz',val:40,type:'once',interval:1,visible:true,desc:'',useCount:0,drainSecs:0},
+    {name:'Aura',val:2,type:'drain',interval:1,visible:true,desc:'',useCount:0,drainSecs:0},
+  ],
+  hpPresets:[
+    {name:'Treffer',val:10,type:'once',interval:1,crit:false,visible:true,desc:'',useCount:0,drainSecs:0},
+    {name:'Schwer',val:25,type:'once',interval:1,crit:false,visible:true,desc:'',useCount:0,drainSecs:0},
+    {name:'Vergiftung',val:1,type:'drain',interval:3,visible:true,desc:'',useCount:0,drainSecs:0},
+  ],
+  enemies:[
+    {name:'Ratte',    staerke:40, magie:10,  leben:80,  geschw:60, ausdauer:30, intel:10},
+    {name:'Goblin',   staerke:80, magie:20,  leben:120, geschw:70, ausdauer:50, intel:30},
+    {name:'Orc',      staerke:150,magie:10,  leben:300, geschw:40, ausdauer:200,intel:20},
+  ],
+};
+
+const drainTimers = {};
+let activeEnemyIdx = -1;
+
+// ── PERSIST ──
+function persist() {
+  S.lastUpdate = Date.now();
+  localStorage.setItem('vitalis4', JSON.stringify(S));
+}
+
+function hydrate() {
+  try {
+    const raw = localStorage.getItem('vitalis4');
+    // also try old key and migrate
+    const old = !raw && localStorage.getItem('vitalis3');
+    const saved = JSON.parse(raw || old || 'null');
+    if (!saved) return;
+    Object.assign(S, saved);
+    if (!S.myStats) S.myStats = {staerke:0,magie:0,leben:0,geschw:0,ausdauer:0,intel:0};
+    if (!S.enemies) S.enemies = [];
+    S.enemies.forEach(e => { STAT_KEYS.forEach(k => { if(!e[k]) e[k]=0; }); });
+    // patch presets with missing fields
+    [...S.mpPresets,...S.hpPresets].forEach(p=>{
+      if(p.visible===undefined) p.visible=true;
+      if(!p.desc) p.desc='';
+      if(!p.useCount) p.useCount=0;
+      if(!p.drainSecs) p.drainSecs=0;
+    });
+
+    const now = Date.now();
+    const elapsed = (now - S.lastUpdate) / 1000;
+    if (elapsed > 2) {
+      const hpG = (S.hpRegenAmt / S.hpRegenInterval) * elapsed;
+      const mpG = (S.mpRegenAmt / S.mpRegenInterval) * elapsed;
+      const oldHP = S.hp, oldMP = S.mp;
+      S.hp = Math.min(S.hpMax, S.hp + hpG);
+      S.mp = Math.min(S.mpMax, S.mp + mpG);
+      const dHP = +(S.hp-oldHP).toFixed(1), dMP = +(S.mp-oldMP).toFixed(1);
+      if (dHP>0||dMP>0) addLog(`Offline ${fmtTime(elapsed)}: ❤ +${dHP}  ✦ +${dMP}`,'info');
+    }
+    S.lastUpdate = now;
+  } catch(e){}
+}
+
+function fmtTime(s) {
+  if(s<60) return Math.round(s)+'s';
+  if(s<3600) return Math.round(s/60)+'min';
+  return Math.round(s/3600)+'h '+Math.round((s%3600)/60)+'min';
+}
+
+// ── RENDER ──
+function render() {
+  const hp = Math.max(0,Math.min(S.hpMax,S.hp));
+  const mp = Math.max(0,Math.min(S.mpMax,S.mp));
+  document.getElementById('hp-val').innerHTML = `${hp.toFixed(1)} <small>/ ${S.hpMax}</small>`;
+  document.getElementById('mp-val').innerHTML = `${mp.toFixed(1)} <small>/ ${S.mpMax}</small>`;
+  document.getElementById('hp-bar').style.width = `${(hp/S.hpMax)*100}%`;
+  document.getElementById('mp-bar').style.width = `${(mp/S.mpMax)*100}%`;
+  document.getElementById('hp-regen-txt').textContent = S.hpRegenInterval===1?`+${S.hpRegenAmt}/s`:`+${S.hpRegenAmt}/${S.hpRegenInterval}s`;
+  document.getElementById('mp-regen-txt').textContent = S.mpRegenInterval===1?`+${S.mpRegenAmt}/s`:`+${S.mpRegenAmt}/${S.mpRegenInterval}s`;
+  // sync enemy tab bars
+  const hp2=document.getElementById('hp-val2');
+  const mp2=document.getElementById('mp-val2');
+  if(hp2) hp2.innerHTML=`${hp.toFixed(1)} <small>/ ${S.hpMax}</small>`;
+  if(mp2) mp2.innerHTML=`${mp.toFixed(1)} <small>/ ${S.mpMax}</small>`;
+  const hb2=document.getElementById('hp-bar2');
+  const mb2=document.getElementById('mp-bar2');
+  if(hb2) hb2.style.width=`${(hp/S.hpMax)*100}%`;
+  if(mb2) mb2.style.width=`${(mp/S.mpMax)*100}%`;
+  const hr2=document.getElementById('hp-regen-txt2');
+  const mr2=document.getElementById('mp-regen-txt2');
+  if(hr2) hr2.textContent=S.hpRegenInterval===1?`+${S.hpRegenAmt}/s`:`+${S.hpRegenAmt}/${S.hpRegenInterval}s`;
+  if(mr2) mr2.textContent=S.mpRegenInterval===1?`+${S.mpRegenAmt}/s`:`+${S.mpRegenAmt}/${S.mpRegenInterval}s`;
+
+  renderBadges(); renderPresets(); renderLog();
+}
+
+function renderBadges() {
+  ['hp','mp'].forEach(type => {
+    const el = document.getElementById(`${type}-drain-badges`);
+    const active = Object.entries(drainTimers)
+      .filter(([k])=>k.startsWith(type+'_'))
+      .map(([k])=>{ const i=parseInt(k.split('_')[1]); const arr=type==='hp'?S.hpPresets:S.mpPresets; return arr[i]?.name||'?'; });
+    el.innerHTML = active.map(n=>`<span class="dbadge ${type==='hp'?'hp-d':''}">⚡ ${n}</span>`).join('');
+  });
+}
+
+// ── REGEN TICK ──
+let lastTick = Date.now(), hpAcc=0, mpAcc=0;
+function tick() {
+  const now=Date.now(), d=(now-lastTick)/1000; lastTick=now;
+  hpAcc+=d; mpAcc+=d;
+  if(hpAcc>=S.hpRegenInterval){const t=Math.floor(hpAcc/S.hpRegenInterval);S.hp=Math.min(S.hpMax,S.hp+t*S.hpRegenAmt);hpAcc-=t*S.hpRegenInterval;}
+  if(mpAcc>=S.mpRegenInterval){const t=Math.floor(mpAcc/S.mpRegenInterval);S.mp=Math.min(S.mpMax,S.mp+t*S.mpRegenAmt);mpAcc-=t*S.mpRegenInterval;}
+  render(); persist();
+}
+
+// ── CRIT ──
+function rollCrit(val) {
+  const isCrit = Math.random() < (S.critChance/100);
+  return {dmg: isCrit?val*2:val, isCrit};
+}
+function showCritFlash() {
+  const el=document.createElement('div'); el.className='crit-overlay';
+  document.body.appendChild(el); setTimeout(()=>el.remove(),500);
+}
+
+// ── ACTIONS ──
+function modHP(sign) {
+  const v=parseFloat(document.getElementById('hp-in').value);
+  if(!v||v<=0){toast('Bitte Menge eingeben');return;}
+  S.hp=Math.max(0,Math.min(S.hpMax,S.hp+sign*v));
+  addLog(sign>0?`💚 Geheilt +${v} Leben`:`💥 Schaden −${v} Leben`,sign>0?'pos':'neg-hp');
+  document.getElementById('hp-in').value='';
+  persist(); render();
+}
+
+function modMP(sign) {
+  const v=parseFloat(document.getElementById('mp-in').value);
+  if(!v||v<=0){toast('Bitte Menge eingeben');return;}
+  if (sign < 0) {
+    const prevMp = S.mp;
+    S.mp = Math.max(0, S.mp - v);
+    const shortage = v - prevMp;
+    if (shortage > 0) {
+      const lifeDmg = shortage * 3;
+      S.hp = Math.max(0, S.hp - lifeDmg);
+      addLog(`🔮 Mana leer! −${lifeDmg} Leben (Überbelastung)`, 'neg-hp');
+      toast(`⚠ Mana leer! −${lifeDmg} Leben`);
+    } else {
+      addLog(`🔮 Mana −${v}`, 'neg-mp');
+    }
+  } else {
+    S.mp=Math.min(S.mpMax, S.mp+v);
+    addLog(`✨ Mana +${v}`,'pos');
+  }
+  document.getElementById('mp-in').value='';
+  persist(); render();
+}
+
+function usePreset(type,i) {
+  const arr=type==='hp'?S.hpPresets:S.mpPresets;
+  const p=arr[i]; if(!p) return;
+  const key=`${type}_${i}`;
+  if(p.type==='once') {
+    if(type==='hp') {
+      const {dmg,isCrit}=p.crit?rollCrit(p.val):{dmg:p.val,isCrit:false};
+      S.hp=Math.max(0,S.hp-dmg);
+      if(isCrit){showCritFlash();addLog(`💥 KRIT! ${p.name} −${dmg} (×2)`,'neg-hp');toast(`💥 KRIT! −${dmg}`);}
+      else{addLog(`💥 ${p.name} −${dmg}`,'neg-hp');toast(`${p.name}: −${dmg}`);}
+    } else {
+      const prevMp = S.mp;
+      S.mp = Math.max(0, S.mp - p.val);
+      const shortage = p.val - prevMp;
+      if (shortage > 0) {
+        const lifeDmg = shortage * 3;
+        S.hp = Math.max(0, S.hp - lifeDmg);
+        addLog(`🔮 ${p.name} — Mana leer! −${lifeDmg} Leben (Überbelastung)`, 'neg-hp');
+        toast(`⚠ Mana leer! −${lifeDmg} Leben`);
+      } else {
+        addLog(`🔮 ${p.name} −${p.val}`, 'neg-mp');
+        toast(`${p.name}: −${p.val}`);
+      }
+    }
+    p.useCount=(p.useCount||0)+1;
+    persist(); render();
+  } else {
+    if(drainTimers[key]){
+      // stop drain — calc seconds
+      const elapsed=drainTimers[key].startTime ? Math.round((Date.now()-drainTimers[key].startTime)/1000) : 0;
+      p.drainSecs=(p.drainSecs||0)+elapsed;
+      clearInterval(drainTimers[key].timer);
+      delete drainTimers[key];
+      toast(`${p.name} gestoppt`);
+    } else {
+      p.useCount=(p.useCount||0)+1;
+      const startTime=Date.now();
+      const timer=setInterval(()=>{
+        if(type==='hp') S.hp=Math.max(0,S.hp-p.val);
+        else S.mp=Math.max(0,S.mp-p.val);
+        addLog(`${type==='hp'?'💥':'🔮'} ${p.name} −${p.val}`,type==='hp'?'neg-hp':'neg-mp');
+        persist(); render();
+      },p.interval*1000);
+      drainTimers[key]={timer,startTime};
+      toast(`${p.name}: −${p.val} alle ${p.interval}s`);
+    }
+    render();
+  }
+}
+
+// ── ENEMY ──
+function renderEnemySelect() {
+  const sel=document.getElementById('enemy-select');
+  const cur=sel.value;
+  sel.innerHTML='<option value="">— Kein Gegner —</option>'+
+    S.enemies.map((e,i)=>`<option value="${i}">${e.name}</option>`).join('');
+  if(cur) sel.value=cur;
+}
+
+function selectEnemy() {
+  const idx=parseInt(document.getElementById('enemy-select').value);
+  activeEnemyIdx=isNaN(idx)?-1:idx;
+  renderEnemyPanel();
+}
+
+function renderEnemyPanel() {
+  const hasEnemy = activeEnemyIdx>=0 && S.enemies[activeEnemyIdx];
+  document.getElementById('enemy-active').style.display=hasEnemy?'block':'none';
+  document.getElementById('enemy-empty').style.display=hasEnemy?'none':'block';
+  if(!hasEnemy) return;
+
+  const e=S.enemies[activeEnemyIdx];
+  document.getElementById('enemy-active-name').textContent=e.name;
+
+  const strDmg=Math.max(1,Math.round(e.staerke/10));
+  const magDmg=Math.max(1,Math.round(e.magie/10));
+  document.getElementById('atk-str-val').textContent=strDmg;
+  document.getElementById('atk-mag-val').textContent=magDmg;
+
+  // comparison table
+  const rows=STAT_KEYS.map((k,i)=>{
+    const me=S.myStats[k]||0, them=e[k]||0;
+    const max=Math.max(me,them,1);
+    const meW=Math.round((me/max)*100), themW=Math.round((them/max)*100);
+    const diff=me>them?'cmp-win':me<them?'cmp-lose':'cmp-even';
+    return `<tr>
+      <td>${STAT_LABELS[i]}</td>
+      <td class="cmp-me">${me}</td>
+      <td style="width:40%">
+        <div style="display:flex;gap:2px;align-items:center">
+          <div class="cmp-bar-bg"><div class="cmp-bar-me" style="width:${meW}%"></div></div>
+          <div class="cmp-bar-bg"><div class="cmp-bar-them" style="width:${themW}%"></div></div>
+        </div>
+      </td>
+      <td class="cmp-them">${them}</td>
+      <td class="${diff}">${me>them?'▲':me<them?'▼':'='}</td>
+    </tr>`;
+  }).join('');
+  document.getElementById('cmp-table').innerHTML=`
+    <tr><th>Stat</th><th style="color:var(--green)">Du</th><th></th><th style="color:var(--enemy)">Gegner</th><th></th></tr>
+    ${rows}`;
+}
+
+function enemyAttack(type) {
+  if(activeEnemyIdx<0) return;
+  const e=S.enemies[activeEnemyIdx];
+  const base=Math.max(1,Math.round(type==='str'?e.staerke/10:e.magie/10));
+  const label=type==='str'?'Angriff':'Magie';
+  const {dmg,isCrit}=rollCrit(base);
+  S.hp=Math.max(0,S.hp-dmg);
+  if(isCrit){showCritFlash();addLog(`💥 ${e.name} KRIT ${label}! −${dmg} (×2)`,'neg-hp');toast(`💥 KRIT! −${dmg}`);}
+  else{addLog(`💥 ${e.name} ${label} −${dmg}`,'neg-hp');toast(`${e.name}: −${dmg}`);}
+  persist(); render();
+}
+
+// ── PRESETS ──
+function renderPresets() {
+  ['hp','mp'].forEach(type=>{
+    const arr=type==='hp'?S.hpPresets:S.mpPresets;
+    const visible=arr.filter(p=>p.visible!==false);
+    const html=visible.map((p,_)=>{
+      const i=arr.indexOf(p);
+      const key=`${type}_${i}`;
+      const drainOn=p.type==='drain'&&!!drainTimers[key];
+      const cls=p.type==='drain'?(drainOn?`${type}-drain-on`:`${type}-p`):`${type}-p`;
+      const val=p.type==='drain'?`${drainOn?'⏹':'▶'} ${p.val}/${p.interval}s`:`−${p.val}${type==='hp'&&p.crit?' ⚔':''}`;
+      const hasDesc=p.desc&&p.desc.trim().length>0;
+      return `<div style="display:flex;flex-direction:column;gap:0">
+        <button class="preset-btn ${cls}" onclick="usePreset('${type}',${i})" style="border-radius:${hasDesc?'14px 14px 0 0':'14px'}">
+          <span class="p-name">${p.name}</span>
+          <span class="p-val">${val}</span>
+        </button>
+        ${hasDesc?'<button onclick="toggleDesc(\'desc-'+type+'-'+i+'\')" style="background:rgba(255,255,255,0.03);border:1px solid var(--border);border-top:none;border-radius:0 0 10px 10px;padding:4px;color:var(--dim);font-size:0.65rem;cursor:pointer;touch-action:manipulation">▼ Info</button><div id="desc-'+type+'-'+i+'" style="display:none;background:var(--card2);border:1px solid var(--border);border-top:none;border-radius:0 0 10px 10px;padding:8px 10px;font-size:0.75rem;color:var(--dim);font-style:italic">'+p.desc+'</div>':''}
+      </div>`;
+    }).join('');
+    document.getElementById(`${type}-presets`).innerHTML=html;
+    if(type==='mp'){const el2=document.getElementById('mp-presets2');if(el2)el2.innerHTML=html;}
+  });
+}
+
+function toggleDesc(id){
+  const el=document.getElementById(id);
+  if(el) el.style.display=el.style.display==='none'?'block':'none';
+}
+
+// ── LOG ──
+function addLog(txt,cls) {
+  const d=new Date();
+  const t=d.getHours().toString().padStart(2,'0')+':'+d.getMinutes().toString().padStart(2,'0');
+  S.log.unshift({txt,cls,t}); if(S.log.length>40) S.log.pop();
+}
+function renderLog() {
+  const el=document.getElementById('log-list');
+  if(!S.log.length){el.innerHTML='<span style="color:var(--dim);font-size:.8rem;font-style:italic">Noch nichts passiert…</span>';return;}
+  el.innerHTML=S.log.map(e=>`<div class="log-item"><span class="log-txt ${e.cls}">${e.txt}</span><span class="log-t">${e.t}</span></div>`).join('');
+}
+
+// ── SETTINGS ──
+function loadSettingsUI() {
+  document.getElementById('s-hp-max').value=S.hpMax;
+  document.getElementById('s-mp-max').value=S.mpMax;
+  document.getElementById('s-hp-ramt').value=S.hpRegenAmt;
+  document.getElementById('s-hp-rint').value=S.hpRegenInterval;
+  document.getElementById('s-mp-ramt').value=S.mpRegenAmt;
+  document.getElementById('s-mp-rint').value=S.mpRegenInterval;
+  document.getElementById('s-crit-chance').value=S.critChance;
+
+  // heal time
+  const missing = S.hpMax - S.hp;
+  const healEl = document.getElementById('heal-time-info');
+  if (healEl) {
+    if (missing <= 0) {
+      healEl.innerHTML = '❤ Du bist bereits voll geheilt';
+    } else if (S.hpRegenAmt <= 0) {
+      healEl.innerHTML = '❤ Keine Regeneration aktiv';
+    } else {
+      const secsNeeded = Math.ceil((missing / S.hpRegenAmt) * S.hpRegenInterval);
+      const eta = new Date(Date.now() + secsNeeded * 1000);
+      const hh = eta.getHours().toString().padStart(2,'0');
+      const mm = eta.getMinutes().toString().padStart(2,'0');
+      let timeStr = '';
+      if (secsNeeded < 60) timeStr = `${secsNeeded}s`;
+      else if (secsNeeded < 3600) timeStr = `${Math.floor(secsNeeded/60)}min ${secsNeeded%60}s`;
+      else {
+        const h = Math.floor(secsNeeded/3600);
+        const m = Math.floor((secsNeeded%3600)/60);
+        timeStr = `${h}h ${m}min`;
+      }
+      healEl.innerHTML = `❤ Voll geheilt in <strong style="color:var(--hp)">${timeStr}</strong> &nbsp;(um ${hh}:${mm} Uhr)`;
+    }
+  }
+
+  // presets
+  ['mp','hp'].forEach(type=>{
+    const arr=type==='hp'?S.hpPresets:S.mpPresets;
+    document.getElementById(`${type}-ped`).innerHTML=arr.map((p,i)=>{
+      const isOnce=p.type!=='drain';
+      const showCrit=type==='hp'&&isOnce;
+      return `<div class="prow" style="flex-wrap:wrap;gap:6px;margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--border)">
+        <input type="text" class="pname-inp" id="${type}-pn${i}" value="${p.name.replace(/"/g,'&quot;')}" placeholder="Name" style="flex:1;min-width:100px">
+        <input type="number" class="pval-inp" id="${type}-pv${i}" value="${p.val}" min="0.1" step="0.1" inputmode="decimal">
+        <div class="dtype-toggle">
+          <button class="dtype-btn ${isOnce?'sel-once':''}" onclick="setDType('${type}',${i},'once')">Einmalig</button>
+          <button class="dtype-btn ${!isOnce?'sel-drain':''}" onclick="setDType('${type}',${i},'drain')">Drain</button>
+        </div>
+        <div id="${type}-pi${i}" style="display:${!isOnce?'flex':'none'};align-items:center;gap:6px;width:100%">
+          <span style="font-size:0.75rem;color:var(--dim)">alle</span>
+          <input type="number" class="pval-inp" id="${type}-pp${i}" value="${p.interval||1}" min="1" step="1" inputmode="numeric">
+          <span style="font-size:0.75rem;color:var(--dim)">Sek</span>
+        </div>
+        <textarea id="${type}-pdesc${i}" placeholder="Beschreibung (optional)" style="width:100%;background:var(--card2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:0.78rem;padding:8px 10px;outline:none;font-family:'Inter',sans-serif;resize:none;min-height:50px">${p.desc||''}</textarea>
+        <label style="display:flex;align-items:center;gap:8px;width:100%;cursor:pointer;font-size:0.8rem;color:var(--dim)">
+          <input type="checkbox" id="${type}-pvis${i}" ${p.visible!==false?'checked':''} style="accent-color:var(--mp);width:16px;height:16px">
+          <span>Im Tracker anzeigen</span>
+        </label>
+        ${showCrit?'<label style="display:flex;align-items:center;gap:8px;width:100%;cursor:pointer;font-size:0.8rem;color:var(--dim)"><input type="checkbox" id="'+type+'-pc'+i+'" '+(p.crit?'checked':'')+'style="accent-color:var(--hp);width:16px;height:16px"><span>⚔ Kritischer Treffer möglich</span></label>':''}
+      </div>`;
+    }).join('');
+  });
+
+  // enemies
+  document.getElementById('enemy-ped').innerHTML=S.enemies.map((e,i)=>`
+    <div class="enemy-editor-item">
+      <div class="enemy-editor-header" onclick="toggleEnemyEditor(${i})">
+        <span>${e.name||'Unbekannt'}</span>
+        <span style="color:var(--dim);font-size:0.75rem">▼</span>
+      </div>
+      <div class="enemy-editor-body" id="eed-${i}">
+        <div style="margin-bottom:10px">
+          <label style="font-size:0.7rem;color:var(--dim);display:block;margin-bottom:4px">Name</label>
+          <input type="text" class="pname-inp" id="en-name-${i}" value="${e.name.replace(/"/g,'&quot;')}" placeholder="Gegner-Name">
+        </div>
+        <div class="enemy-stat-row">
+          ${STAT_KEYS.map((k,si)=>`<div class="enemy-stat-inp-wrap">
+            <label>${STAT_LABELS[si]}</label>
+            <input type="number" class="enemy-stat-inp" id="en-${k}-${i}" value="${e[k]||0}" min="0" inputmode="numeric">
+          </div>`).join('')}
+        </div>
+        <div style="font-size:0.72rem;color:var(--dim);margin-bottom:8px">
+          Angriff: ${Math.max(1,Math.round(e.staerke/10))} | Magie: ${Math.max(1,Math.round(e.magie/10))}
+        </div>
+        <button class="enemy-del-btn" onclick="deleteEnemy(${i})">✕ Löschen</button>
+      </div>
+    </div>`).join('');
+}
+
+function toggleStats() {
+  const body=document.getElementById('stats-body');
+  const arrow=document.getElementById('stats-arrow');
+  const open=body.style.display==='none';
+  body.style.display=open?'block':'none';
+  arrow.textContent=open?'▲ verstecken':'▼ anzeigen';
+  if(open) renderStats();
+}
+
+function renderStats() {
+  const all=[
+    ...S.mpPresets.map(p=>({...p,type2:'mp'})),
+    ...S.hpPresets.map(p=>({...p,type2:'hp'}))
+  ];
+  const el=document.getElementById('stats-content');
+  if(!all.some(p=>p.useCount>0||p.drainSecs>0)){
+    el.innerHTML='<p style="color:var(--dim);font-size:0.8rem;font-style:italic">Noch keine Aktivierungen.</p>';
+    return;
+  }
+  el.innerHTML=all.map(p=>{
+    const icon=p.type2==='mp'?'🔮':'💥';
+    const countStr=p.useCount>0?`${p.useCount}× aktiviert`:'';
+    const secStr=p.drainSecs>0?`${fmtTime(p.drainSecs)} aktiv gewesen`:'';
+    if(!countStr&&!secStr) return '';
+    return `<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--border)">
+      <span style="font-size:0.82rem">${icon} ${p.name}</span>
+      <span style="font-size:0.75rem;color:var(--dim);text-align:right">${[countStr,secStr].filter(Boolean).join(' · ')}</span>
+    </div>`;
+  }).filter(Boolean).join('');
+}
+
+function resetStats() {
+  if(!confirm('Statistiken zurücksetzen?')) return;
+  [...S.mpPresets,...S.hpPresets].forEach(p=>{p.useCount=0;p.drainSecs=0;});
+  persist(); renderStats();
+}
+
+function toggleEnemyEditor(i) {
+  const el=document.getElementById(`eed-${i}`);
+  el.classList.toggle('open');
+}
+
+function setDType(type,i,dtype) {
+  const arr=type==='hp'?S.hpPresets:S.mpPresets;
+  arr[i].type=dtype;
+  const row=document.getElementById(`${type}-ped`).children[i];
+  if(!row) return;
+  row.querySelectorAll('.dtype-btn').forEach(b=>{
+    b.className='dtype-btn';
+    if(b.textContent.trim()==='Einmalig'&&dtype==='once') b.classList.add('sel-once');
+    if(b.textContent.trim()==='Drain'&&dtype==='drain') b.classList.add('sel-drain');
+  });
+  const ir=document.getElementById(`${type}-pi${i}`);
+  if(ir) ir.style.display=dtype==='drain'?'flex':'none';
+}
+
+function collectAll() {
+  // presets
+  ['mp','hp'].forEach(type=>{
+    const arr=type==='hp'?S.hpPresets:S.mpPresets;
+    arr.forEach((p,i)=>{
+      p.name=document.getElementById(`${type}-pn${i}`)?.value||p.name;
+      p.val=parseFloat(document.getElementById(`${type}-pv${i}`)?.value)||p.val;
+      p.interval=parseInt(document.getElementById(`${type}-pp${i}`)?.value)||p.interval||1;
+      p.desc=document.getElementById(`${type}-pdesc${i}`)?.value||'';
+      p.visible=document.getElementById(`${type}-pvis${i}`)?.checked!==false;
+      if(type==='hp') p.crit=document.getElementById(`hp-pc${i}`)?.checked||false;
+    });
+  });
+  // enemies
+  S.enemies.forEach((e,i)=>{
+    e.name=document.getElementById(`en-name-${i}`)?.value||e.name;
+    STAT_KEYS.forEach(k=>{ const v=parseInt(document.getElementById(`en-${k}-${i}`)?.value); if(!isNaN(v)) e[k]=v; });
+  });
+  // my stats
+  STAT_KEYS.forEach(k=>{ const v=parseInt(document.getElementById('my-'+k)?.value); if(!isNaN(v)) S.myStats[k]=v; });
+}
+
+function addPreset(type) {
+  collectAll();
+  const arr=type==='hp'?S.hpPresets:S.mpPresets;
+  arr.push({name:'Neu',val:10,type:'once',interval:1,crit:false});
+  loadSettingsUI();
+}
+function rmPreset(type) {
+  collectAll();
+  const arr=type==='hp'?S.hpPresets:S.mpPresets;
+  if(arr.length>1) arr.pop();
+  loadSettingsUI();
+}
+function addEnemy() {
+  collectAll();
+  S.enemies.push({name:'Neuer Gegner',staerke:50,magie:20,leben:100,geschw:50,ausdauer:50,intel:20});
+  loadSettingsUI();
+  // open the new one
+  setTimeout(()=>toggleEnemyEditor(S.enemies.length-1),50);
+}
+function deleteEnemy(i) {
+  collectAll();
+  S.enemies.splice(i,1);
+  if(activeEnemyIdx===i) activeEnemyIdx=-1;
+  else if(activeEnemyIdx>i) activeEnemyIdx--;
+  loadSettingsUI(); renderEnemySelect();
+}
+
+function saveSettings() {
+  collectAll();
+  S.critChance=parseFloat(document.getElementById('s-crit-chance').value)||S.critChance;
+  S.hpMax=parseFloat(document.getElementById('s-hp-max').value)||S.hpMax;
+  S.mpMax=parseFloat(document.getElementById('s-mp-max').value)||S.mpMax;
+  S.hpRegenAmt=parseFloat(document.getElementById('s-hp-ramt').value)||S.hpRegenAmt;
+  S.hpRegenInterval=parseInt(document.getElementById('s-hp-rint').value)||S.hpRegenInterval;
+  S.mpRegenAmt=parseFloat(document.getElementById('s-mp-ramt').value)||S.mpRegenAmt;
+  S.mpRegenInterval=parseInt(document.getElementById('s-mp-rint').value)||S.mpRegenInterval;
+  S.hp=Math.min(S.hp,S.hpMax); S.mp=Math.min(S.mp,S.mpMax);
+  hpAcc=0; mpAcc=0;
+  persist(); render(); renderEnemySelect(); renderEnemyPanel();
+  toast('✓ Gespeichert!');
+}
+
+function exportData() {
+  const data = JSON.stringify(S);
+  // try clipboard first
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(data).then(()=>toast('✓ In Zwischenablage kopiert!')).catch(()=>fallbackCopy(data));
+  } else {
+    fallbackCopy(data);
+  }
+}
+
+function fallbackCopy(text) {
+  const el = document.getElementById('import-field');
+  el.value = text;
+  el.select();
+  document.execCommand('copy');
+  toast('✓ In Textfeld kopiert — manuell kopieren!');
+}
+
+function importData() {
+  const raw = document.getElementById('import-field').value.trim();
+  if (!raw) { toast('Bitte Export-Text einfügen'); return; }
+  try {
+    const parsed = JSON.parse(raw);
+    if (!parsed.hpMax || !parsed.mpMax) throw new Error('Ungültige Daten');
+    Object.assign(S, parsed);
+    persist(); render(); renderEnemySelect();
+    document.getElementById('import-field').value = '';
+    toast('✓ Daten wiederhergestellt!');
+  } catch(e) {
+    toast('⚠ Ungültiger Export-Text');
+  }
+}
+
+function resetAll() {
+  Object.values(drainTimers).forEach(clearInterval);
+  localStorage.removeItem('vitalis4');
+  location.reload();
+}
+
+// ── TABS ──
+function showTab(id,btn) {
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab-item').forEach(b=>b.classList.remove('active'));
+  document.getElementById('panel-'+id).classList.add('active');
+  btn.classList.add('active');
+  if(id==='settings') loadSettingsUI();
+  if(id==='enemy') renderEnemySelect();
+}
+
+// ── TOAST ──
+let toastT;
+function toast(msg) {
+  const el=document.getElementById('toast');
+  el.textContent=msg; el.classList.add('show');
+  clearTimeout(toastT); toastT=setTimeout(()=>el.classList.remove('show'),2000);
+}
+
+// ── INIT ──
+hydrate(); render(); renderEnemySelect();
+setInterval(tick,1000);
+</script>
+</body>
+</html>
