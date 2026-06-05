@@ -416,13 +416,20 @@ body::before {
     <div id="enemy-active" style="display:none">
       <div class="enemy-card">
         <div class="enemy-name" id="enemy-active-name">Ratte</div>
+
+        <!-- desc dropdown -->
+        <div id="enemy-desc-wrap" style="display:none;margin-bottom:10px">
+          <button id="enemy-desc-toggle" onclick="toggleEnemyDesc()" style="width:100%;padding:8px;background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:10px;color:var(--dim);font-size:0.75rem;cursor:pointer;touch-action:manipulation;text-align:left">▼ Beschreibung</button>
+          <div id="enemy-desc-text" style="display:none;background:var(--card2);border:1px solid var(--border);border-top:none;border-radius:0 0 10px 10px;padding:10px 12px;font-size:0.78rem;color:var(--dim);white-space:pre-wrap;line-height:1.5"></div>
+        </div>
+
         <div class="attack-row">
-          <button class="atk-btn atk-str" onclick="enemyAttack('str')" id="atk-str-btn">
+          <button class="atk-btn atk-str" onclick="enemyAttack('str')">
             <span class="atk-label">⚔ ANGRIFF</span>
             <span class="atk-val" id="atk-str-val">10</span>
             <span class="atk-label">Schaden</span>
           </button>
-          <button class="atk-btn atk-mag" onclick="enemyAttack('mag')" id="atk-mag-btn">
+          <button class="atk-btn atk-mag" onclick="enemyAttack('mag')">
             <span class="atk-label">🔮 MAGIE</span>
             <span class="atk-val" id="atk-mag-val">5</span>
             <span class="atk-label">Schaden</span>
@@ -529,8 +536,16 @@ body::before {
       <p style="font-size:0.72rem;color:var(--dim);margin-bottom:14px;font-style:italic">Stärke÷10 = Angriff | Magie÷10 = Magieschaden</p>
       <div id="enemy-ped"></div>
       <div style="display:flex;gap:8px;margin-top:8px">
-        <button class="add-preset-btn" onclick="addEnemy()">+ Gegner</button>
+        <button class="add-preset-btn" onclick="addEnemy()">+ Manuell</button>
       </div>
+    </div>
+
+    <!-- MONSTER IMPORT -->
+    <div class="set-card">
+      <h3 style="color:var(--enemy);margin-bottom:10px">👾 MONSTER IMPORT</h3>
+      <p style="font-size:0.75rem;color:var(--dim);margin-bottom:12px;font-style:italic">Füge den Text mit VITALIS_IMPORT: aus dem Monster-Chat ein</p>
+      <textarea id="monster-import-field" placeholder="VITALIS_IMPORT:{...} hier einfügen..." style="width:100%;background:var(--card2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:0.75rem;padding:10px;outline:none;font-family:'Inter',sans-serif;resize:none;min-height:60px;margin-bottom:8px"></textarea>
+      <button onclick="importMonster()" style="width:100%;padding:13px;border-radius:12px;background:rgba(255,140,0,0.08);border:1px solid rgba(255,140,0,0.3);color:var(--enemy);font-family:'Inter',sans-serif;font-size:0.85rem;font-weight:600;cursor:pointer;touch-action:manipulation">👾 Monster hinzufügen</button>
     </div>
 
     <button class="save-btn" onclick="saveSettings()">✓ SPEICHERN</button>
@@ -554,6 +569,14 @@ body::before {
       <button onclick="exportData()" style="width:100%;padding:13px;border-radius:12px;background:rgba(212,168,75,0.1);border:1px solid rgba(212,168,75,0.4);color:var(--gold);font-family:'Inter',sans-serif;font-size:0.85rem;font-weight:600;cursor:pointer;margin-bottom:8px;touch-action:manipulation">📤 Daten exportieren (kopieren)</button>
       <textarea id="import-field" placeholder="Export-Text hier einfügen..." style="width:100%;background:var(--card2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:0.75rem;padding:10px;outline:none;font-family:'Inter',sans-serif;resize:none;min-height:60px;margin-bottom:8px"></textarea>
       <button onclick="importData()" style="width:100%;padding:13px;border-radius:12px;background:rgba(77,255,136,0.08);border:1px solid rgba(77,255,136,0.3);color:var(--green);font-family:'Inter',sans-serif;font-size:0.85rem;font-weight:600;cursor:pointer;touch-action:manipulation">📥 Daten importieren</button>
+    </div>
+
+    <!-- EXCEL IMPORT -->
+    <div class="set-card" style="margin-top:8px">
+      <h3 style="color:var(--green);margin-bottom:10px">📊 EXCEL IMPORT</h3>
+      <p style="font-size:0.75rem;color:var(--dim);margin-bottom:12px;font-style:italic">Füge den Text aus deinem Excel-Makro ein um Stats und Akademie zu aktualisieren</p>
+      <textarea id="excel-import-field" placeholder="Export-Text hier einfügen..." style="width:100%;background:var(--card2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:0.75rem;padding:10px;outline:none;font-family:'Inter',sans-serif;resize:none;min-height:60px;margin-bottom:8px"></textarea>
+      <button onclick="importExcel()" style="width:100%;padding:13px;border-radius:12px;background:rgba(77,255,136,0.08);border:1px solid rgba(77,255,136,0.3);color:var(--green);font-family:'Inter',sans-serif;font-size:0.85rem;font-weight:600;cursor:pointer;touch-action:manipulation">📥 Importieren</button>
     </div>
 
     <button class="reset-btn" onclick="resetAll()">Alles zurücksetzen</button>
@@ -582,6 +605,7 @@ let S = {
   lastUpdate:Date.now(),
   log:[],
   myStats:{staerke:0,magie:0,leben:0,geschw:0,ausdauer:0,intel:0},
+  akademie:[],
   mpPresets:[
     {name:'Feuerball',val:25,type:'once',interval:1,visible:true,desc:'',useCount:0,drainSecs:0},
     {name:'Blitz',val:40,type:'once',interval:1,visible:true,desc:'',useCount:0,drainSecs:0},
@@ -601,6 +625,7 @@ let S = {
 
 const drainTimers = {};
 let activeEnemyIdx = -1;
+let activeEnemyType = '';
 
 // ── PERSIST ──
 function persist() {
@@ -749,17 +774,18 @@ function usePreset(type,i) {
       if(isCrit){showCritFlash();addLog(`💥 KRIT! ${p.name} −${dmg} (×2)`,'neg-hp');toast(`💥 KRIT! −${dmg}`);}
       else{addLog(`💥 ${p.name} −${dmg}`,'neg-hp');toast(`${p.name}: −${dmg}`);}
     } else {
+      const cost = masteryDiscount(p);
       const prevMp = S.mp;
-      S.mp = Math.max(0, S.mp - p.val);
-      const shortage = p.val - prevMp;
+      S.mp = Math.max(0, S.mp - cost);
+      const shortage = cost - prevMp;
       if (shortage > 0) {
         const lifeDmg = shortage * 3;
         S.hp = Math.max(0, S.hp - lifeDmg);
         addLog(`🔮 ${p.name} — Mana leer! −${lifeDmg} Leben (Überbelastung)`, 'neg-hp');
         toast(`⚠ Mana leer! −${lifeDmg} Leben`);
       } else {
-        addLog(`🔮 ${p.name} −${p.val}`, 'neg-mp');
-        toast(`${p.name}: −${p.val}`);
+        addLog(`🔮 ${p.name} −${cost}`, 'neg-mp');
+        toast(`${p.name}: −${cost}`);
       }
     }
     p.useCount=(p.useCount||0)+1;
@@ -792,37 +818,83 @@ function usePreset(type,i) {
 function renderEnemySelect() {
   const sel=document.getElementById('enemy-select');
   const cur=sel.value;
-  sel.innerHTML='<option value="">— Kein Gegner —</option>'+
-    S.enemies.map((e,i)=>`<option value="${i}">${e.name}</option>`).join('');
-  if(cur) sel.value=cur;
+
+  let html = '<option value="">— Kein Gegner —</option>';
+
+  // eigene Gegner
+  if (S.enemies.length) {
+    html += '<optgroup label="👹 Gegner">';
+    html += S.enemies.map((e,i)=>`<option value="e_${i}">${e.name}</option>`).join('');
+    html += '</optgroup>';
+  }
+
+  // Akademie
+  const akd = S.akademie || [];
+  const stufen = [
+    {id:1, label:'🎓 Stufe 1'},
+    {id:2, label:'🎓 Stufe 2'},
+    {id:3, label:'🎓 Stufe 3'},
+    {id:4, label:'🎓 Lehrer'},
+  ];
+  stufen.forEach(s => {
+    const group = akd.filter(c=>c.stufe===s.id);
+    if (!group.length) return;
+    html += `<optgroup label="${s.label}">`;
+    html += group.map((_,i) => {
+      const globalIdx = akd.indexOf(group[i]);
+      return `<option value="a_${globalIdx}">${group[i].name}</option>`;
+    }).join('');
+    html += '</optgroup>';
+  });
+
+  sel.innerHTML = html;
+  if(cur) sel.value = cur;
 }
 
 function selectEnemy() {
-  const idx=parseInt(document.getElementById('enemy-select').value);
-  activeEnemyIdx=isNaN(idx)?-1:idx;
+  const val = document.getElementById('enemy-select').value;
+  if (!val) { activeEnemyIdx=-1; activeEnemyType=''; renderEnemyPanel(); return; }
+  const parts = val.split('_');
+  activeEnemyType = parts[0]; // 'e' or 'a'
+  activeEnemyIdx = parseInt(parts[1]);
   renderEnemyPanel();
 }
 
 function renderEnemyPanel() {
-  const hasEnemy = activeEnemyIdx>=0 && S.enemies[activeEnemyIdx];
-  document.getElementById('enemy-active').style.display=hasEnemy?'block':'none';
-  document.getElementById('enemy-empty').style.display=hasEnemy?'none':'block';
-  if(!hasEnemy) return;
+  const hasEnemy = activeEnemyIdx >= 0 && activeEnemyType !== '';
+  document.getElementById('enemy-active').style.display = hasEnemy ? 'block' : 'none';
+  document.getElementById('enemy-empty').style.display = hasEnemy ? 'none' : 'block';
+  if (!hasEnemy) return;
 
-  const e=S.enemies[activeEnemyIdx];
-  document.getElementById('enemy-active-name').textContent=e.name;
+  const e = activeEnemyType === 'a'
+    ? S.akademie[activeEnemyIdx]
+    : S.enemies[activeEnemyIdx];
+  if (!e) return;
 
-  const strDmg=Math.max(1,Math.round(e.staerke/10));
-  const magDmg=Math.max(1,Math.round(e.magie/10));
-  document.getElementById('atk-str-val').textContent=strDmg;
-  document.getElementById('atk-mag-val').textContent=magDmg;
+  document.getElementById('enemy-active-name').textContent = e.name;
 
-  // comparison table
-  const rows=STAT_KEYS.map((k,i)=>{
-    const me=S.myStats[k]||0, them=e[k]||0;
-    const max=Math.max(me,them,1);
-    const meW=Math.round((me/max)*100), themW=Math.round((them/max)*100);
-    const diff=me>them?'cmp-win':me<them?'cmp-lose':'cmp-even';
+  // desc dropdown
+  const descWrap = document.getElementById('enemy-desc-wrap');
+  const descEl = document.getElementById('enemy-desc-text');
+  if (e.desc && e.desc.trim()) {
+    descWrap.style.display = 'block';
+    descEl.textContent = e.desc;
+    descEl.style.display = 'none';
+    document.getElementById('enemy-desc-toggle').textContent = '▼ Beschreibung';
+  } else {
+    descWrap.style.display = 'none';
+  }
+
+  const strDmg = Math.max(1, Math.round((e.staerke||0) / 10));
+  const magDmg = Math.max(1, Math.round((e.magie||0) / 10));
+  document.getElementById('atk-str-val').textContent = strDmg;
+  document.getElementById('atk-mag-val').textContent = magDmg;
+
+  const rows = STAT_KEYS.map((k,i) => {
+    const me = S.myStats[k]||0, them = e[k]||0;
+    const max = Math.max(me,them,1);
+    const meW = Math.round((me/max)*100), themW = Math.round((them/max)*100);
+    const diff = me>them?'cmp-win':me<them?'cmp-lose':'cmp-even';
     return `<tr>
       <td>${STAT_LABELS[i]}</td>
       <td class="cmp-me">${me}</td>
@@ -843,7 +915,8 @@ function renderEnemyPanel() {
 
 function enemyAttack(type) {
   if(activeEnemyIdx<0) return;
-  const e=S.enemies[activeEnemyIdx];
+  const e = activeEnemyType==='a' ? S.akademie[activeEnemyIdx] : S.enemies[activeEnemyIdx];
+  if(!e) return;
   const base=Math.max(1,Math.round(type==='str'?e.staerke/10:e.magie/10));
   const label=type==='str'?'Angriff':'Magie';
   const {dmg,isCrit}=rollCrit(base);
@@ -853,7 +926,141 @@ function enemyAttack(type) {
   persist(); render();
 }
 
-// ── PRESETS ──
+// ── AKADEMIE ──
+function toggleAkdStufe(stufe) {
+  const bodies = {1:'akd-stufe1-body', 2:'akd-stufe2-body', 3:'akd-stufe3-body', 4:'akd-lehrer-body'};
+  const arrows = {1:'akd-s1-arrow', 2:'akd-s2-arrow', 3:'akd-s3-arrow', 4:'akd-s4-arrow'};
+  const body = document.getElementById(bodies[stufe]);
+  const arrow = document.getElementById(arrows[stufe]);
+  if (!body) return;
+  const open = body.style.display === 'none';
+  body.style.display = open ? 'block' : 'none';
+  arrow.textContent = open ? '▲' : '▼';
+}
+
+function renderAkademie() {
+  const chars = S.akademie || [];
+  const empty = document.getElementById('akademie-empty');
+  if (!chars.length) { if(empty) empty.style.display='block'; return; }
+  if(empty) empty.style.display='none';
+
+  [1,2,3,4].forEach(stufe => {
+    const label = stufe===4?'lehrer':`stufe${stufe}`;
+    const wrap = document.getElementById(`akd-${label}-wrap`);
+    const body = document.getElementById(`akd-${label}-body`);
+    const group = chars.filter(c=>c.stufe===stufe);
+    if (!wrap||!body) return;
+    wrap.style.display = group.length ? 'block' : 'none';
+    body.innerHTML = group.map(c=>`
+      <div style="background:var(--card);border:1px solid rgba(255,140,0,0.2);border-radius:12px;padding:12px 14px;margin-bottom:6px">
+        <div style="font-family:'Cinzel',serif;font-size:0.8rem;color:var(--enemy);margin-bottom:8px">${c.name}</div>
+        <table style="width:100%;font-size:0.75rem;border-collapse:collapse">
+          ${['Leben','Stärke','Magie','Intelligenz','Geschwindigkeit','Ausdauer'].map((label,li)=>{
+            const keys=['leben','staerke','magie','intel','geschw','ausdauer'];
+            const me = S.myStats[keys[li]]||0;
+            const them = c[keys[li]]||0;
+            const diff = me>them?'▲':me<them?'▼':'=';
+            const col = me>them?'var(--green)':me<them?'var(--hp)':'var(--dim)';
+            return `<tr style="border-bottom:1px solid var(--border)">
+              <td style="padding:3px 0;color:var(--dim)">${label}</td>
+              <td style="text-align:right;color:var(--green);font-weight:600">${me}</td>
+              <td style="text-align:center;color:${col}">${diff}</td>
+              <td style="text-align:left;color:var(--enemy);font-weight:600">${them}</td>
+            </tr>`;
+          }).join('')}
+        </table>
+      </div>`).join('');
+  });
+}
+
+// ── EXCEL IMPORT ──
+function importExcel() {
+  const raw = document.getElementById('excel-import-field').value.trim();
+  if (!raw) { toast('Bitte Export-Text einfügen'); return; }
+  try {
+    const parsed = JSON.parse(raw);
+    if (parsed.myStats) {
+      Object.assign(S.myStats, parsed.myStats);
+      // update hpMax from leben stat
+      if (parsed.myStats.leben) S.hpMax = parsed.myStats.leben;
+      // update mpMax from (magie + intel) / 3
+      if (parsed.myStats.magie !== undefined && parsed.myStats.intel !== undefined) {
+        S.mpMax = Math.round((parsed.myStats.magie + parsed.myStats.intel) / 3);
+      }
+      S.hp = Math.min(S.hp, S.hpMax);
+      S.mp = Math.min(S.mp, S.mpMax);
+    }
+    if (parsed.akademie) S.akademie = parsed.akademie;
+    persist(); render(); renderAkademie(); renderEnemySelect();
+    // update settings UI fields if open
+    const sHpMax = document.getElementById('s-hp-max');
+    const sMpMax = document.getElementById('s-mp-max');
+    if (sHpMax) sHpMax.value = S.hpMax;
+    if (sMpMax) sMpMax.value = S.mpMax;
+    STAT_KEYS.forEach(k => {
+      const el = document.getElementById('my-'+k);
+      if (el) el.value = S.myStats[k] || 0;
+    });
+    document.getElementById('excel-import-field').value = '';
+    toast('✓ Excel-Daten importiert!');
+  } catch(e) {
+    toast('⚠ Ungültiger Export-Text');
+  }
+}
+
+// ── VITALIS MONSTER IMPORT ──
+function importMonster() {
+  const raw = document.getElementById('monster-import-field').value.trim();
+  if (!raw) { toast('Bitte Monster-Text einfügen'); return; }
+  try {
+    // find VITALIS_IMPORT: and grab everything after it (handles multiline JSON)
+    const match = raw.match(/VITALIS_IMPORT:\s*(\{[\s\S]*\})/);
+    if (!match) { toast('⚠ Kein VITALIS_IMPORT gefunden'); return; }
+    const parsed = JSON.parse(match[1]);
+    if (!parsed.name) { toast('⚠ Kein Name gefunden'); return; }
+
+    // build desc from desc + faehigkeiten + kampfhinweis
+    let desc = parsed.desc || '';
+    if (parsed.faehigkeiten && parsed.faehigkeiten.length) {
+      desc += '\n\nFÄHIGKEITEN:';
+      parsed.faehigkeiten.forEach(f => {
+        desc += `\n[${f.typ}] ${f.name} — ${f.beschreibung}`;
+      });
+    }
+    if (parsed.kampfhinweis) {
+      desc += `\n\nKAMPFHINWEIS:\n${parsed.kampfhinweis}`;
+    }
+
+    S.enemies.push({
+      name: parsed.name,
+      staerke: parsed.staerke || 0,
+      magie: parsed.magie || 0,
+      leben: parsed.leben || 0,
+      geschw: parsed.geschw || 0,
+      ausdauer: parsed.ausdauer || 0,
+      intel: parsed.intel || 0,
+      desc: desc.trim(),
+    });
+    persist(); renderEnemySelect();
+    document.getElementById('monster-import-field').value = '';
+    toast(`✓ ${parsed.name} hinzugefügt!`);
+  } catch(e) {
+    toast('⚠ Ungültiges Format');
+  }
+}
+const MASTERY_MAX = 100;       // activations for once
+const DRAIN_MASTERY_SECS = 3000; // 50 minutes for drain
+
+function isMastered(p) {
+  if (p.type === 'drain') return (p.drainSecs || 0) >= DRAIN_MASTERY_SECS;
+  return (p.useCount || 0) >= MASTERY_MAX;
+}
+
+function masteryDiscount(p) {
+  if (!isMastered(p)) return p.val;
+  return Math.floor(p.val * 0.67); // 33% off
+}
+
 function renderPresets() {
   ['hp','mp'].forEach(type=>{
     const arr=type==='hp'?S.hpPresets:S.mpPresets;
@@ -862,11 +1069,18 @@ function renderPresets() {
       const i=arr.indexOf(p);
       const key=`${type}_${i}`;
       const drainOn=p.type==='drain'&&!!drainTimers[key];
+      const mastered = type==='mp' && isMastered(p);
+      const cost = type==='mp' ? masteryDiscount(p) : p.val;
       const cls=p.type==='drain'?(drainOn?`${type}-drain-on`:`${type}-p`):`${type}-p`;
-      const val=p.type==='drain'?`${drainOn?'⏹':'▶'} ${p.val}/${p.interval}s`:`−${p.val}${type==='hp'&&p.crit?' ⚔':''}`;
+      const val=p.type==='drain'
+        ? `${drainOn?'⏹':'▶'} ${cost}/${p.interval}s${mastered?' ✦':''}`
+        : `−${cost}${type==='hp'&&p.crit?' ⚔':''}${mastered?' ✦':''}`;
+      const masteryStyle = mastered
+        ? 'box-shadow:0 0 10px rgba(212,168,75,0.5),0 0 20px rgba(212,168,75,0.2);border-color:rgba(212,168,75,0.6);'
+        : '';
       const hasDesc=p.desc&&p.desc.trim().length>0;
       return `<div style="display:flex;flex-direction:column;gap:0">
-        <button class="preset-btn ${cls}" onclick="usePreset('${type}',${i})" style="border-radius:${hasDesc?'14px 14px 0 0':'14px'}">
+        <button class="preset-btn ${cls}" onclick="usePreset('${type}',${i})" style="border-radius:${hasDesc?'14px 14px 0 0':'14px'};${masteryStyle}">
           <span class="p-name">${p.name}</span>
           <span class="p-val">${val}</span>
         </button>
@@ -976,8 +1190,12 @@ function loadSettingsUI() {
             <input type="number" class="enemy-stat-inp" id="en-${k}-${i}" value="${e[k]||0}" min="0" inputmode="numeric">
           </div>`).join('')}
         </div>
+        <div style="margin-bottom:8px">
+          <label style="font-size:0.7rem;color:var(--dim);display:block;margin-bottom:4px">Beschreibung / Fähigkeiten</label>
+          <textarea class="pname-inp" id="en-desc-${i}" placeholder="Beschreibung, Fähigkeiten, Kampfhinweis..." style="min-height:60px;resize:none;width:100%">${(e.desc||'').replace(/</g,'&lt;')}</textarea>
+        </div>
         <div style="font-size:0.72rem;color:var(--dim);margin-bottom:8px">
-          Angriff: ${Math.max(1,Math.round(e.staerke/10))} | Magie: ${Math.max(1,Math.round(e.magie/10))}
+          Angriff: ${Math.max(1,Math.round((e.staerke||0)/10))} | Magie: ${Math.max(1,Math.round((e.magie||0)/10))}
         </div>
         <button class="enemy-del-btn" onclick="deleteEnemy(${i})">✕ Löschen</button>
       </div>
@@ -1021,6 +1239,14 @@ function resetStats() {
   persist(); renderStats();
 }
 
+function toggleEnemyDesc() {
+  const el = document.getElementById('enemy-desc-text');
+  const btn = document.getElementById('enemy-desc-toggle');
+  const open = el.style.display === 'none';
+  el.style.display = open ? 'block' : 'none';
+  btn.textContent = open ? '▲ Beschreibung' : '▼ Beschreibung';
+}
+
 function toggleEnemyEditor(i) {
   const el=document.getElementById(`eed-${i}`);
   el.classList.toggle('open');
@@ -1056,6 +1282,7 @@ function collectAll() {
   // enemies
   S.enemies.forEach((e,i)=>{
     e.name=document.getElementById(`en-name-${i}`)?.value||e.name;
+    e.desc=document.getElementById(`en-desc-${i}`)?.value||e.desc||'';
     STAT_KEYS.forEach(k=>{ const v=parseInt(document.getElementById(`en-${k}-${i}`)?.value); if(!isNaN(v)) e[k]=v; });
   });
   // my stats
@@ -1150,7 +1377,7 @@ function showTab(id,btn) {
   document.getElementById('panel-'+id).classList.add('active');
   btn.classList.add('active');
   if(id==='settings') loadSettingsUI();
-  if(id==='enemy') renderEnemySelect();
+  if(id==='enemy') { renderEnemySelect(); renderAkademie(); }
 }
 
 // ── TOAST ──
@@ -1162,7 +1389,7 @@ function toast(msg) {
 }
 
 // ── INIT ──
-hydrate(); render(); renderEnemySelect();
+hydrate(); render(); renderEnemySelect(); renderAkademie();
 setInterval(tick,1000);
 </script>
 </body>
