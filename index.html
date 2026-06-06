@@ -306,6 +306,8 @@ body::before {
 /* CRIT FLASH */
 @keyframes crit-flash { 0%{background:rgba(255,30,30,0.0)} 20%{background:rgba(255,30,30,0.55)} 100%{background:rgba(255,30,30,0.0)} }
 .crit-overlay { position:fixed; inset:0; z-index:999; pointer-events:none; animation:crit-flash 0.5s ease-out forwards; }
+@keyframes dodge-flash { 0%{background:rgba(77,255,136,0.0)} 20%{background:rgba(77,255,136,0.4)} 100%{background:rgba(77,255,136,0.0)} }
+.dodge-overlay { position:fixed; inset:0; z-index:999; pointer-events:none; animation:dodge-flash 0.5s ease-out forwards; }
 
 .divider { height:1px; background:var(--border); margin:14px 0; }
 
@@ -416,6 +418,7 @@ body::before {
     <div id="enemy-active" style="display:none">
       <div class="enemy-card">
         <div class="enemy-name" id="enemy-active-name">Ratte</div>
+        <div id="enemy-dodge-info" style="font-size:0.75rem;margin-bottom:10px;color:var(--dim)"></div>
 
         <!-- desc dropdown -->
         <div id="enemy-desc-wrap" style="display:none;margin-bottom:10px">
@@ -729,6 +732,10 @@ function showCritFlash() {
   const el=document.createElement('div'); el.className='crit-overlay';
   document.body.appendChild(el); setTimeout(()=>el.remove(),500);
 }
+function showDodgeFlash() {
+  const el=document.createElement('div'); el.className='dodge-overlay';
+  document.body.appendChild(el); setTimeout(()=>el.remove(),500);
+}
 
 // ── ACTIONS ──
 function modHP(sign) {
@@ -890,6 +897,18 @@ function renderEnemyPanel() {
   document.getElementById('atk-str-val').textContent = strDmg;
   document.getElementById('atk-mag-val').textContent = magDmg;
 
+  // dodge chance display
+  const mySpeed = S.myStats.geschw || 0;
+  const enemySpeed = e.geschw || 0;
+  const dodgePct = enemySpeed > 0
+    ? Math.min(40, Math.max(0, Math.round(((mySpeed - enemySpeed) / enemySpeed) * 15)))
+    : 0;
+  const dodgeEl = document.getElementById('enemy-dodge-info');
+  if (dodgeEl) {
+    dodgeEl.textContent = `💨 Ausweichen: ${dodgePct}%`;
+    dodgeEl.style.color = dodgePct > 0 ? 'var(--green)' : 'var(--dim)';
+  }
+
   const rows = STAT_KEYS.map((k,i) => {
     const me = S.myStats[k]||0, them = e[k]||0;
     const max = Math.max(me,them,1);
@@ -919,10 +938,25 @@ function enemyAttack(type) {
   if(!e) return;
   const base=Math.max(1,Math.round(type==='str'?e.staerke/10:e.magie/10));
   const label=type==='str'?'Angriff':'Magie';
-  const {dmg,isCrit}=rollCrit(base);
-  S.hp=Math.max(0,S.hp-dmg);
-  if(isCrit){showCritFlash();addLog(`💥 ${e.name} KRIT ${label}! −${dmg} (×2)`,'neg-hp');toast(`💥 KRIT! −${dmg}`);}
-  else{addLog(`💥 ${e.name} ${label} −${dmg}`,'neg-hp');toast(`${e.name}: −${dmg}`);}
+
+  // dodge roll
+  const mySpeed = S.myStats.geschw || 0;
+  const enemySpeed = e.geschw || 0;
+  const dodgeChance = enemySpeed > 0
+    ? Math.min(0.40, Math.max(0, ((mySpeed - enemySpeed) / enemySpeed) * 0.15))
+    : 0;
+  const dodged = Math.random() < dodgeChance;
+
+  if (dodged) {
+    showDodgeFlash();
+    addLog(`💨 ${e.name} ${label} — AUSGEWICHEN! (${Math.round(dodgeChance*100)}% Chance)`, 'pos');
+    toast(`💨 Ausgewichen!`);
+  } else {
+    const {dmg,isCrit}=rollCrit(base);
+    S.hp=Math.max(0,S.hp-dmg);
+    if(isCrit){showCritFlash();addLog(`💥 ${e.name} KRIT ${label}! −${dmg} (×2)`,'neg-hp');toast(`💥 KRIT! −${dmg}`);}
+    else{addLog(`💥 ${e.name} ${label} −${dmg}`,'neg-hp');toast(`${e.name}: −${dmg}`);}
+  }
   persist(); render();
 }
 
