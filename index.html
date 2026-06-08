@@ -239,7 +239,14 @@ body::before {
 
 /* SETTINGS */
 .set-card { background:var(--card); border:1px solid var(--border); border-radius:18px; padding:18px 18px 12px; margin-bottom:12px; }
-.set-card h3 { font-family:'Cinzel',serif; font-size:0.78rem; letter-spacing:0.15em; margin-bottom:14px; }
+.set-section-header {
+  display:flex; justify-content:space-between; align-items:center;
+  cursor:pointer; touch-action:manipulation;
+  font-family:'Cinzel',serif; font-size:0.78rem; letter-spacing:0.12em;
+  color:var(--text);
+}
+.set-section-body { margin-top:14px; }
+.set-arrow { color:var(--dim); font-size:0.75rem; }
 .hp-col h3{color:var(--hp);} .mp-col h3{color:var(--mp);}
 .set-row { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; gap:12px; }
 .set-row label { font-size:0.88rem; color:var(--text); flex:1; }
@@ -312,7 +319,24 @@ body::before {
 @keyframes dodge-flash { 0%{background:rgba(77,255,136,0.0)} 20%{background:rgba(77,255,136,0.4)} 100%{background:rgba(77,255,136,0.0)} }
 .dodge-overlay { position:fixed; inset:0; z-index:999; pointer-events:none; animation:dodge-flash 0.5s ease-out forwards; }
 
-.divider { height:1px; background:var(--border); margin:14px 0; }
+/* GROUP */
+.gc-btn {
+  width:36px; height:36px; border-radius:10px;
+  border:1px solid var(--border); background:var(--card2);
+  color:var(--dim); font-size:0.9rem; font-weight:600;
+  cursor:pointer; touch-action:manipulation; transition:all 0.15s;
+}
+.gc-btn.active { background:rgba(77,255,136,0.2); border-color:var(--green); color:var(--green); }
+
+/* GROUP BARS */
+.group-bar-card {
+  background:var(--card); border:1px solid var(--border);
+  border-radius:12px; padding:8px 12px; margin-bottom:6px;
+}
+.group-bar-top { display:flex; justify-content:space-between; align-items:center; margin-bottom:4px; }
+.group-bar-name { font-size:0.72rem; color:var(--dim); font-weight:500; }
+.group-bar-val { font-size:0.9rem; font-weight:300; font-variant-numeric:tabular-nums; }
+.group-bar-fill { height:5px; border-radius:3px; background:linear-gradient(90deg,#4a3000,#d4a84b); transition:width 0.4s; }
 
 #toast {
   position:fixed; bottom:calc(78px + var(--safe-bot)); left:50%;
@@ -355,8 +379,10 @@ body::before {
       </div>
     </div>
 
+    <!-- GROUP MEMBERS -->
+    <div id="group-bars" style="margin-bottom:8px"></div>
+
     <div class="divider"></div>
-    <p class="sec-title">Leben</p>
     <div class="input-row">
       <input type="number" class="num-input" id="hp-in" placeholder="Menge" min="0" inputmode="numeric">
     </div>
@@ -411,6 +437,8 @@ body::before {
       </div>
     </div>
 
+    <div id="group-bars2" style="margin-bottom:8px"></div>
+
     <p class="sec-title">Gegner auswählen</p>
     <div class="enemy-select-wrap">
       <select id="enemy-select" onchange="selectEnemy()">
@@ -459,110 +487,156 @@ body::before {
   <!-- ═══ SETTINGS ═══ -->
   <div class="panel" id="panel-settings">
 
-    <!-- HP -->
-    <div class="set-card hp-col">
-      <h3>❤ LEBEN</h3>
-      <div class="set-row">
-        <label>Maximum<small>Dein max. Leben</small></label>
-        <input type="number" class="set-inp" id="s-hp-max" inputmode="numeric">
+    <!-- LEBEN & MANA -->
+    <div class="set-card">
+      <div class="set-section-header" onclick="toggleSection('sec-vitals')">
+        <span>❤✦ Leben & Mana</span><span class="set-arrow" id="arr-vitals">▼</span>
       </div>
-      <div class="set-row" style="flex-direction:column;align-items:flex-start;gap:8px">
-        <label>Regeneration</label>
-        <div style="display:flex;gap:8px;width:100%;align-items:center">
-          <input type="number" class="set-inp" id="s-hp-ramt" step="0.1" inputmode="decimal" style="flex:1;width:auto">
-          <span style="color:var(--dim);font-size:.85rem">pro</span>
-          <input type="number" class="set-inp" id="s-hp-rint" step="1" min="1" inputmode="numeric" style="flex:1;width:auto">
-          <span style="color:var(--dim);font-size:.85rem">Sek</span>
+      <div class="set-section-body" id="sec-vitals" style="display:none">
+        <div style="margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid var(--border)">
+          <p style="font-size:0.7rem;color:var(--hp);font-family:'Cinzel',serif;letter-spacing:0.1em;margin-bottom:10px">❤ LEBEN</p>
+          <div class="set-row">
+            <label>Maximum</label>
+            <input type="number" class="set-inp" id="s-hp-max" inputmode="numeric">
+          </div>
+          <div class="set-row" style="flex-direction:column;align-items:flex-start;gap:8px">
+            <label>Regeneration</label>
+            <div style="display:flex;gap:8px;width:100%;align-items:center">
+              <input type="number" class="set-inp" id="s-hp-ramt" step="0.1" inputmode="decimal" style="flex:1;width:auto">
+              <span style="color:var(--dim);font-size:.85rem">pro</span>
+              <input type="number" class="set-inp" id="s-hp-rint" step="1" min="1" inputmode="numeric" style="flex:1;width:auto">
+              <span style="color:var(--dim);font-size:.85rem">Sek</span>
+            </div>
+          </div>
+          <div class="set-row">
+            <label>Krit-Chance<small>% Chance auf ×2 Schaden</small></label>
+            <input type="number" class="set-inp" id="s-crit-chance" min="0" max="100" inputmode="numeric">
+          </div>
+          <div id="heal-time-info" style="margin-top:4px;padding:10px 12px;background:rgba(255,77,77,0.06);border:1px solid rgba(255,77,77,0.15);border-radius:10px;font-size:0.78rem;color:var(--dim)"></div>
+        </div>
+        <div>
+          <p style="font-size:0.7rem;color:var(--mp);font-family:'Cinzel',serif;letter-spacing:0.1em;margin-bottom:10px">✦ MANA</p>
+          <div class="set-row">
+            <label>Maximum<small>(Magie+Intel)÷3</small></label>
+            <input type="number" class="set-inp" id="s-mp-max" inputmode="numeric">
+          </div>
+          <div class="set-row" style="flex-direction:column;align-items:flex-start;gap:8px">
+            <label>Regeneration</label>
+            <div style="display:flex;gap:8px;width:100%;align-items:center">
+              <input type="number" class="set-inp" id="s-mp-ramt" step="0.1" inputmode="decimal" style="flex:1;width:auto">
+              <span style="color:var(--dim);font-size:.85rem">pro</span>
+              <input type="number" class="set-inp" id="s-mp-rint" step="1" min="1" inputmode="numeric" style="flex:1;width:auto">
+              <span style="color:var(--dim);font-size:.85rem">Sek</span>
+            </div>
+          </div>
         </div>
       </div>
-      <div class="set-row">
-        <label>Krit-Chance<small>% Chance auf ×2 Schaden</small></label>
-        <input type="number" class="set-inp" id="s-crit-chance" min="0" max="100" inputmode="numeric">
-      </div>
-      <div id="heal-time-info" style="margin-top:4px;padding:10px 12px;background:rgba(255,77,77,0.06);border:1px solid rgba(255,77,77,0.15);border-radius:10px;font-size:0.78rem;color:var(--dim)"></div>
     </div>
 
-    <!-- MP -->
-    <div class="set-card mp-col">
-      <h3>✦ MANA</h3>
-      <div class="set-row">
-        <label>Maximum<small>Dein max. Mana</small></label>
-        <input type="number" class="set-inp" id="s-mp-max" inputmode="numeric">
+    <!-- MEINE STATS -->
+    <div class="set-card">
+      <div class="set-section-header" onclick="toggleSection('sec-mystats')">
+        <span>👤 Meine Stats</span><span class="set-arrow" id="arr-mystats">▼</span>
       </div>
-      <div class="set-row" style="flex-direction:column;align-items:flex-start;gap:8px">
-        <label>Regeneration</label>
-        <div style="display:flex;gap:8px;width:100%;align-items:center">
-          <input type="number" class="set-inp" id="s-mp-ramt" step="0.1" inputmode="decimal" style="flex:1;width:auto">
-          <span style="color:var(--dim);font-size:.85rem">pro</span>
-          <input type="number" class="set-inp" id="s-mp-rint" step="1" min="1" inputmode="numeric" style="flex:1;width:auto">
-          <span style="color:var(--dim);font-size:.85rem">Sek</span>
+      <div class="set-section-body" id="sec-mystats" style="display:none">
+        <p style="font-size:0.72rem;color:var(--dim);margin-bottom:12px;font-style:italic">Nur für den Vergleich mit Gegnern</p>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div class="enemy-stat-inp-wrap"><label>Stärke</label><input type="number" class="enemy-stat-inp" id="my-staerke" inputmode="numeric"></div>
+          <div class="enemy-stat-inp-wrap"><label>Magie</label><input type="number" class="enemy-stat-inp" id="my-magie" inputmode="numeric"></div>
+          <div class="enemy-stat-inp-wrap"><label>Leben</label><input type="number" class="enemy-stat-inp" id="my-leben" inputmode="numeric"></div>
+          <div class="enemy-stat-inp-wrap"><label>Geschwindigkeit</label><input type="number" class="enemy-stat-inp" id="my-geschw" inputmode="numeric"></div>
+          <div class="enemy-stat-inp-wrap"><label>Ausdauer</label><input type="number" class="enemy-stat-inp" id="my-ausdauer" inputmode="numeric"></div>
+          <div class="enemy-stat-inp-wrap"><label>Intelligenz</label><input type="number" class="enemy-stat-inp" id="my-intel" inputmode="numeric"></div>
         </div>
       </div>
     </div>
 
-    <!-- MY STATS -->
+    <!-- MANA PRESETS -->
     <div class="set-card">
-      <h3 style="color:var(--green)">👤 MEINE STATS</h3>
-      <p style="font-size:0.75rem;color:var(--dim);margin-bottom:14px;font-style:italic">Nur für den Vergleich mit Gegnern</p>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-        <div class="enemy-stat-inp-wrap"><label>Stärke</label><input type="number" class="enemy-stat-inp" id="my-staerke" inputmode="numeric"></div>
-        <div class="enemy-stat-inp-wrap"><label>Magie</label><input type="number" class="enemy-stat-inp" id="my-magie" inputmode="numeric"></div>
-        <div class="enemy-stat-inp-wrap"><label>Leben</label><input type="number" class="enemy-stat-inp" id="my-leben" inputmode="numeric"></div>
-        <div class="enemy-stat-inp-wrap"><label>Geschwindigkeit</label><input type="number" class="enemy-stat-inp" id="my-geschw" inputmode="numeric"></div>
-        <div class="enemy-stat-inp-wrap"><label>Ausdauer</label><input type="number" class="enemy-stat-inp" id="my-ausdauer" inputmode="numeric"></div>
-        <div class="enemy-stat-inp-wrap"><label>Intelligenz</label><input type="number" class="enemy-stat-inp" id="my-intel" inputmode="numeric"></div>
+      <div class="set-section-header" onclick="toggleSection('sec-mpreset')">
+        <span>✦ Mana Presets</span><span class="set-arrow" id="arr-mpreset">▼</span>
+      </div>
+      <div class="set-section-body" id="sec-mpreset" style="display:none">
+        <p style="font-size:0.72rem;color:var(--dim);margin-bottom:14px;font-style:italic">Einmalig = einmal abziehen | Drain = läuft bis Stop</p>
+        <div id="mp-ped"></div>
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <button class="add-preset-btn" onclick="addPreset('mp')">+ Hinzufügen</button>
+          <button class="rm-preset-btn"  onclick="rmPreset('mp')">− Entfernen</button>
+        </div>
       </div>
     </div>
 
-    <!-- MP PRESETS -->
+    <!-- LEBEN PRESETS -->
     <div class="set-card">
-      <h3 style="color:var(--mp)">✦ MANA PRESETS</h3>
-      <p style="font-size:0.72rem;color:var(--dim);margin-bottom:14px;font-style:italic">Einmalig = einmal abziehen | Drain = läuft bis Stop</p>
-      <div id="mp-ped"></div>
-      <div style="display:flex;gap:8px;margin-top:8px">
-        <button class="add-preset-btn" onclick="addPreset('mp')">+ Hinzufügen</button>
-        <button class="rm-preset-btn"  onclick="rmPreset('mp')">− Entfernen</button>
+      <div class="set-section-header" onclick="toggleSection('sec-hpreset')">
+        <span>❤ Leben Presets</span><span class="set-arrow" id="arr-hpreset">▼</span>
+      </div>
+      <div class="set-section-body" id="sec-hpreset" style="display:none">
+        <p style="font-size:0.72rem;color:var(--dim);margin-bottom:14px;font-style:italic">Einmalig = einmal abziehen | Drain = läuft bis Stop</p>
+        <div id="hp-ped"></div>
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <button class="add-preset-btn" onclick="addPreset('hp')">+ Hinzufügen</button>
+          <button class="rm-preset-btn"  onclick="rmPreset('hp')">− Entfernen</button>
+        </div>
       </div>
     </div>
 
-    <!-- HP PRESETS -->
+    <!-- GEGNER -->
     <div class="set-card">
-      <h3 style="color:var(--hp)">❤ LEBEN PRESETS</h3>
-      <p style="font-size:0.72rem;color:var(--dim);margin-bottom:14px;font-style:italic">Einmalig = einmal abziehen | Drain = läuft bis Stop</p>
-      <div id="hp-ped"></div>
-      <div style="display:flex;gap:8px;margin-top:8px">
-        <button class="add-preset-btn" onclick="addPreset('hp')">+ Hinzufügen</button>
-        <button class="rm-preset-btn"  onclick="rmPreset('hp')">− Entfernen</button>
+      <div class="set-section-header" onclick="toggleSection('sec-enemy')">
+        <span>👹 Gegner</span><span class="set-arrow" id="arr-enemy">▼</span>
       </div>
-    </div>
-
-    <!-- ENEMY PRESETS -->
-    <div class="set-card">
-      <h3 style="color:var(--enemy)">👹 GEGNER</h3>
-      <p style="font-size:0.72rem;color:var(--dim);margin-bottom:14px;font-style:italic">Stärke÷10 = Angriff | Magie÷10 = Magieschaden</p>
-      <div id="enemy-ped"></div>
-      <div style="display:flex;gap:8px;margin-top:8px">
-        <button class="add-preset-btn" onclick="addEnemy()">+ Manuell</button>
+      <div class="set-section-body" id="sec-enemy" style="display:none">
+        <p style="font-size:0.72rem;color:var(--dim);margin-bottom:14px;font-style:italic">Stärke÷10 = Angriff | Magie÷10 = Magieschaden</p>
+        <div id="enemy-ped"></div>
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <button class="add-preset-btn" onclick="addEnemy()">+ Manuell</button>
+        </div>
       </div>
     </div>
 
     <!-- MONSTER IMPORT -->
     <div class="set-card">
-      <h3 style="color:var(--enemy);margin-bottom:10px">👾 MONSTER IMPORT</h3>
-      <p style="font-size:0.75rem;color:var(--dim);margin-bottom:12px;font-style:italic">Füge den Text mit VITALIS_IMPORT: aus dem Monster-Chat ein</p>
-      <textarea id="monster-import-field" placeholder="VITALIS_IMPORT:{...} hier einfügen..." style="width:100%;background:var(--card2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:0.75rem;padding:10px;outline:none;font-family:'Inter',sans-serif;resize:none;min-height:60px;margin-bottom:8px"></textarea>
-      <button onclick="importMonster()" style="width:100%;padding:13px;border-radius:12px;background:rgba(255,140,0,0.08);border:1px solid rgba(255,140,0,0.3);color:var(--enemy);font-family:'Inter',sans-serif;font-size:0.85rem;font-weight:600;cursor:pointer;touch-action:manipulation">👾 Monster hinzufügen</button>
+      <div class="set-section-header" onclick="toggleSection('sec-monster')">
+        <span>👾 Monster Import</span><span class="set-arrow" id="arr-monster">▼</span>
+      </div>
+      <div class="set-section-body" id="sec-monster" style="display:none">
+        <p style="font-size:0.75rem;color:var(--dim);margin-bottom:12px;font-style:italic">Füge den Text mit VITALIS_IMPORT: aus dem Monster-Chat ein</p>
+        <textarea id="monster-import-field" placeholder="VITALIS_IMPORT:{...} hier einfügen..." style="width:100%;background:var(--card2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:0.75rem;padding:10px;outline:none;font-family:'Inter',sans-serif;resize:none;min-height:60px;margin-bottom:8px"></textarea>
+        <button onclick="importMonster()" style="width:100%;padding:13px;border-radius:12px;background:rgba(255,140,0,0.08);border:1px solid rgba(255,140,0,0.3);color:var(--enemy);font-family:'Inter',sans-serif;font-size:0.85rem;font-weight:600;cursor:pointer;touch-action:manipulation">👾 Monster hinzufügen</button>
+      </div>
+    </div>
+
+    <!-- GRUPPE -->
+    <div class="set-card">
+      <div class="set-section-header" onclick="toggleSection('sec-group')">
+        <span>👥 Gruppe</span><span class="set-arrow" id="arr-sec-group">▼</span>
+      </div>
+      <div class="set-section-body" id="sec-group" style="display:none">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <label style="font-size:0.88rem">Gruppe aktiv</label>
+          <input type="checkbox" id="group-active" style="width:20px;height:20px;accent-color:var(--green);cursor:pointer" onchange="toggleGroupActive()">
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+          <label style="font-size:0.88rem">Anzahl Mitglieder<small style="display:block;color:var(--dim);font-size:0.72rem">1 bis 3</small></label>
+          <div style="display:flex;gap:6px">
+            <button onclick="setGroupCount(1)" id="gc-1" class="gc-btn">1</button>
+            <button onclick="setGroupCount(2)" id="gc-2" class="gc-btn">2</button>
+            <button onclick="setGroupCount(3)" id="gc-3" class="gc-btn">3</button>
+          </div>
+        </div>
+        <div id="group-members-editor"></div>
+      </div>
     </div>
 
     <button class="save-btn" onclick="saveSettings()">✓ SPEICHERN</button>
 
-    <!-- STATISTICS -->
+    <!-- STATISTIKEN -->
     <div class="set-card" style="margin-top:8px">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;cursor:pointer" onclick="toggleStats()">
-        <h3 style="color:var(--dim);margin:0">📊 STATISTIKEN</h3>
-        <span style="color:var(--dim);font-size:0.75rem" id="stats-arrow">▼ anzeigen</span>
+      <div class="set-section-header" onclick="toggleSection('sec-stats');renderStats()">
+        <span>📊 Statistiken</span><span class="set-arrow" id="arr-sec-stats">▼</span>
       </div>
-      <div id="stats-body" style="display:none">
+      <div class="set-section-body" id="sec-stats" style="display:none">
         <div id="stats-content"></div>
         <button onclick="resetStats()" style="margin-top:10px;width:100%;padding:10px;border-radius:10px;background:transparent;border:1px solid rgba(255,77,77,0.25);color:rgba(255,77,77,0.5);font-family:'Inter',sans-serif;font-size:0.75rem;cursor:pointer">Statistiken zurücksetzen</button>
       </div>
@@ -570,19 +644,27 @@ body::before {
 
     <!-- BACKUP -->
     <div class="set-card" style="margin-top:8px">
-      <h3 style="color:var(--gold);margin-bottom:10px">💾 BACKUP</h3>
-      <p style="font-size:0.75rem;color:var(--dim);margin-bottom:12px;font-style:italic">Daten sichern bevor du die App neu installierst</p>
-      <button onclick="exportData()" style="width:100%;padding:13px;border-radius:12px;background:rgba(212,168,75,0.1);border:1px solid rgba(212,168,75,0.4);color:var(--gold);font-family:'Inter',sans-serif;font-size:0.85rem;font-weight:600;cursor:pointer;margin-bottom:8px;touch-action:manipulation">📤 Daten exportieren (kopieren)</button>
-      <textarea id="import-field" placeholder="Export-Text hier einfügen..." style="width:100%;background:var(--card2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:0.75rem;padding:10px;outline:none;font-family:'Inter',sans-serif;resize:none;min-height:60px;margin-bottom:8px"></textarea>
-      <button onclick="importData()" style="width:100%;padding:13px;border-radius:12px;background:rgba(77,255,136,0.08);border:1px solid rgba(77,255,136,0.3);color:var(--green);font-family:'Inter',sans-serif;font-size:0.85rem;font-weight:600;cursor:pointer;touch-action:manipulation">📥 Daten importieren</button>
+      <div class="set-section-header" onclick="toggleSection('sec-backup')">
+        <span>💾 Backup</span><span class="set-arrow" id="arr-sec-backup">▼</span>
+      </div>
+      <div class="set-section-body" id="sec-backup" style="display:none">
+        <p style="font-size:0.75rem;color:var(--dim);margin-bottom:12px;font-style:italic">Daten sichern bevor du die App neu installierst</p>
+        <button onclick="exportData()" style="width:100%;padding:13px;border-radius:12px;background:rgba(212,168,75,0.1);border:1px solid rgba(212,168,75,0.4);color:var(--gold);font-family:'Inter',sans-serif;font-size:0.85rem;font-weight:600;cursor:pointer;margin-bottom:8px;touch-action:manipulation">📤 Daten exportieren</button>
+        <textarea id="import-field" placeholder="Export-Text hier einfügen..." style="width:100%;background:var(--card2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:0.75rem;padding:10px;outline:none;font-family:'Inter',sans-serif;resize:none;min-height:60px;margin-bottom:8px"></textarea>
+        <button onclick="importData()" style="width:100%;padding:13px;border-radius:12px;background:rgba(77,255,136,0.08);border:1px solid rgba(77,255,136,0.3);color:var(--green);font-family:'Inter',sans-serif;font-size:0.85rem;font-weight:600;cursor:pointer;touch-action:manipulation">📥 Daten importieren</button>
+      </div>
     </div>
 
     <!-- EXCEL IMPORT -->
     <div class="set-card" style="margin-top:8px">
-      <h3 style="color:var(--green);margin-bottom:10px">📊 EXCEL IMPORT</h3>
-      <p style="font-size:0.75rem;color:var(--dim);margin-bottom:12px;font-style:italic">Füge den Text aus deinem Excel-Makro ein um Stats und Akademie zu aktualisieren</p>
-      <textarea id="excel-import-field" placeholder="Export-Text hier einfügen..." style="width:100%;background:var(--card2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:0.75rem;padding:10px;outline:none;font-family:'Inter',sans-serif;resize:none;min-height:60px;margin-bottom:8px"></textarea>
-      <button onclick="importExcel()" style="width:100%;padding:13px;border-radius:12px;background:rgba(77,255,136,0.08);border:1px solid rgba(77,255,136,0.3);color:var(--green);font-family:'Inter',sans-serif;font-size:0.85rem;font-weight:600;cursor:pointer;touch-action:manipulation">📥 Importieren</button>
+      <div class="set-section-header" onclick="toggleSection('sec-excel')">
+        <span>📊 Excel Import</span><span class="set-arrow" id="arr-sec-excel">▼</span>
+      </div>
+      <div class="set-section-body" id="sec-excel" style="display:none">
+        <p style="font-size:0.75rem;color:var(--dim);margin-bottom:12px;font-style:italic">Füge den Text aus deinem Excel-Makro ein</p>
+        <textarea id="excel-import-field" placeholder="Export-Text hier einfügen..." style="width:100%;background:var(--card2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:0.75rem;padding:10px;outline:none;font-family:'Inter',sans-serif;resize:none;min-height:60px;margin-bottom:8px"></textarea>
+        <button onclick="importExcel()" style="width:100%;padding:13px;border-radius:12px;background:rgba(77,255,136,0.08);border:1px solid rgba(77,255,136,0.3);color:var(--green);font-family:'Inter',sans-serif;font-size:0.85rem;font-weight:600;cursor:pointer;touch-action:manipulation">📥 Importieren</button>
+      </div>
     </div>
 
   </div>
@@ -611,6 +693,15 @@ let S = {
   log:[],
   myStats:{staerke:0,magie:0,leben:0,geschw:0,ausdauer:0,intel:0},
   akademie:[],
+  group: {
+    active: false,
+    count: 1,
+    members: [
+      {name:'Mitglied 1', hp:100, hpMax:100, hpRegenAmt:1, hpRegenInterval:60},
+      {name:'Mitglied 2', hp:100, hpMax:100, hpRegenAmt:1, hpRegenInterval:60},
+      {name:'Mitglied 3', hp:100, hpMax:100, hpRegenAmt:1, hpRegenInterval:60},
+    ]
+  },
   mpPresets:[
     {name:'Feuerball',val:25,type:'once',interval:1,visible:true,desc:'',useCount:0,drainSecs:0},
     {name:'Blitz',val:40,type:'once',interval:1,visible:true,desc:'',useCount:0,drainSecs:0},
@@ -648,6 +739,12 @@ function hydrate() {
     Object.assign(S, saved);
     if (!S.myStats) S.myStats = {staerke:0,magie:0,leben:0,geschw:0,ausdauer:0,intel:0};
     if (!S.enemies) S.enemies = [];
+    if (!S.group) S.group = {active:false, count:1, members:[
+      {name:'Mitglied 1',hp:100,hpMax:100,hpRegenAmt:1,hpRegenInterval:60},
+      {name:'Mitglied 2',hp:100,hpMax:100,hpRegenAmt:1,hpRegenInterval:60},
+      {name:'Mitglied 3',hp:100,hpMax:100,hpRegenAmt:1,hpRegenInterval:60},
+    ]};
+    if (!S.group.count) S.group.count = 1;
     S.enemies.forEach(e => { STAT_KEYS.forEach(k => { if(!e[k]) e[k]=0; }); });
     // patch presets with missing fields
     [...S.mpPresets,...S.hpPresets].forEach(p=>{
@@ -702,7 +799,7 @@ function render() {
   if(hr2) hr2.textContent=S.hpRegenInterval===1?`+${S.hpRegenAmt}/s`:`+${S.hpRegenAmt}/${S.hpRegenInterval}s`;
   if(mr2) mr2.textContent=S.mpRegenInterval===1?`+${S.mpRegenAmt}/s`:`+${S.mpRegenAmt}/${S.mpRegenInterval}s`;
 
-  renderBadges(); renderPresets(); renderLog();
+  renderBadges(); renderPresets(); renderLog(); renderGroupBars();
 }
 
 function renderBadges() {
@@ -722,6 +819,7 @@ function tick() {
   hpAcc+=d; mpAcc+=d;
   if(hpAcc>=S.hpRegenInterval){const t=Math.floor(hpAcc/S.hpRegenInterval);S.hp=Math.min(S.hpMax,S.hp+t*S.hpRegenAmt);hpAcc-=t*S.hpRegenInterval;}
   if(mpAcc>=S.mpRegenInterval){const t=Math.floor(mpAcc/S.mpRegenInterval);S.mp=Math.min(S.mpMax,S.mp+t*S.mpRegenAmt);mpAcc-=t*S.mpRegenInterval;}
+  tickGroup(d);
   render(); persist();
 }
 
@@ -955,14 +1053,122 @@ function enemyAttack(type) {
     toast(`💨 Ausgewichen!`);
   } else {
     const {dmg,isCrit}=rollCrit(base);
-    S.hp=Math.max(0,S.hp-dmg);
-    if(isCrit){showCritFlash();addLog(`💥 ${e.name} KRIT ${label}! −${dmg} (×2)`,'neg-hp');toast(`💥 KRIT! −${dmg}`);}
-    else{addLog(`💥 ${e.name} ${label} −${dmg}`,'neg-hp');toast(`${e.name}: −${dmg}`);}
+    // group targeting
+    const groupTarget = S.group.active ? groupAttack(dmg) : null;
+    if (groupTarget) {
+      if(isCrit){showCritFlash();addLog(`💥 ${e.name} KRIT ${label} → ${groupTarget}! −${dmg} (×2)`,'neg-hp');toast(`💥 KRIT auf ${groupTarget}! −${dmg}`);}
+      else{addLog(`💥 ${e.name} ${label} → ${groupTarget} −${dmg}`,'neg-hp');toast(`${groupTarget}: −${dmg}`);}
+    } else {
+      S.hp=Math.max(0,S.hp-dmg);
+      if(isCrit){showCritFlash();addLog(`💥 ${e.name} KRIT ${label}! −${dmg} (×2)`,'neg-hp');toast(`💥 KRIT! −${dmg}`);}
+      else{addLog(`💥 ${e.name} ${label} −${dmg}`,'neg-hp');toast(`${e.name}: −${dmg}`);}
+    }
   }
   persist(); render();
 }
 
-// ── AKADEMIE ──
+// ── GROUP ──
+let groupRegenAccs = [0,0,0];
+
+function renderGroupBars() {
+  const el = document.getElementById('group-bars');
+  if (!el) return;
+  if (!S.group.active) { el.style.display='none'; return; }
+  el.style.display='block';
+  const count = S.group.count || 1;
+  el.innerHTML = S.group.members.slice(0, count).map((m,i) => {
+    const pct = Math.max(0, Math.min(100, Math.round((m.hp/m.hpMax)*100)));
+    return `<div class="group-bar-card">
+      <div class="group-bar-top">
+        <span class="group-bar-name">👤 ${m.name}</span>
+        <span class="group-bar-val">${Math.round(m.hp)} <small style="color:var(--dim)">/ ${m.hpMax}</small></span>
+      </div>
+      <div class="bar-bg"><div class="group-bar-fill" style="width:${pct}%"></div></div>
+    </div>`;
+  }).join('');
+  const el2 = document.getElementById('group-bars2');
+  if (el2) el2.innerHTML = el.innerHTML;
+}
+
+function tickGroup(delta) {
+  if (!S.group.active) return;
+  const count = S.group.count || 1;
+  S.group.members.slice(0, count).forEach((m,i) => {
+    groupRegenAccs[i] = (groupRegenAccs[i]||0) + delta;
+    if (groupRegenAccs[i] >= m.hpRegenInterval) {
+      const t = Math.floor(groupRegenAccs[i]/m.hpRegenInterval);
+      m.hp = Math.min(m.hpMax, m.hp + t*m.hpRegenAmt);
+      groupRegenAccs[i] -= t*m.hpRegenInterval;
+    }
+  });
+}
+
+function groupAttack(dmg) {
+  if (!S.group.active) return null;
+  const count = S.group.count || 1;
+  // targets: me + count group members
+  const total = count + 1;
+  const roll = Math.floor(Math.random() * total);
+  if (roll === 0) return null; // hits me
+  const m = S.group.members[roll - 1];
+  m.hp = Math.max(0, m.hp - dmg);
+  return m.name;
+}
+
+function setGroupCount(n) {
+  S.group.count = n;
+  [1,2,3].forEach(i => {
+    const btn = document.getElementById(`gc-${i}`);
+    if (btn) btn.className = 'gc-btn' + (i===n?' active':'');
+  });
+  loadGroupEditor();
+  persist(); renderGroupBars();
+}
+
+function toggleGroupActive() {
+  collectGroup();
+  S.group.active = document.getElementById('group-active').checked;
+  persist(); render(); renderGroupBars();
+}
+
+function loadGroupEditor() {
+  const el = document.getElementById('group-members-editor');
+  if (!el) return;
+  document.getElementById('group-active').checked = S.group.active;
+  const count = S.group.count || 1;
+  [1,2,3].forEach(i => {
+    const btn = document.getElementById(`gc-${i}`);
+    if (btn) btn.className = 'gc-btn' + (i===count?' active':'');
+  });
+  el.innerHTML = S.group.members.slice(0, count).map((m,i)=>`
+    <div style="background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:8px">
+      <input type="text" class="pname-inp" id="grp-name-${i}" value="${m.name}" placeholder="Name" style="width:100%;margin-bottom:8px">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:6px">
+        <div class="enemy-stat-inp-wrap"><label>Max Leben</label><input type="number" class="enemy-stat-inp" id="grp-hpmax-${i}" value="${m.hpMax}" min="1" inputmode="numeric"></div>
+        <div class="enemy-stat-inp-wrap"><label>Aktuell</label><input type="number" class="enemy-stat-inp" id="grp-hp-${i}" value="${Math.round(m.hp)}" min="0" inputmode="numeric"></div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <span style="font-size:0.72rem;color:var(--dim)">Regen:</span>
+        <input type="number" class="enemy-stat-inp" id="grp-ramt-${i}" value="${m.hpRegenAmt}" min="0" step="0.1" inputmode="decimal" style="width:60px">
+        <span style="font-size:0.72rem;color:var(--dim)">pro</span>
+        <input type="number" class="enemy-stat-inp" id="grp-rint-${i}" value="${m.hpRegenInterval}" min="1" inputmode="numeric" style="width:60px">
+        <span style="font-size:0.72rem;color:var(--dim)">Sek</span>
+      </div>
+    </div>`).join('');
+}
+
+function collectGroup() {
+  const cb = document.getElementById('group-active');
+  if (cb) S.group.active = cb.checked;
+  const count = S.group.count || 1;
+  S.group.members.slice(0, count).forEach((m,i) => {
+    m.name     = document.getElementById(`grp-name-${i}`)?.value || m.name;
+    m.hpMax    = parseFloat(document.getElementById(`grp-hpmax-${i}`)?.value) || m.hpMax;
+    m.hp       = Math.min(m.hpMax, parseFloat(document.getElementById(`grp-hp-${i}`)?.value)||m.hp);
+    m.hpRegenAmt      = parseFloat(document.getElementById(`grp-ramt-${i}`)?.value)||m.hpRegenAmt;
+    m.hpRegenInterval = parseInt(document.getElementById(`grp-rint-${i}`)?.value)||m.hpRegenInterval;
+  });
+}
 function toggleAkdStufe(stufe) {
   const bodies = {1:'akd-stufe1-body', 2:'akd-stufe2-body', 3:'akd-stufe3-body', 4:'akd-lehrer-body'};
   const arrows = {1:'akd-s1-arrow', 2:'akd-s2-arrow', 3:'akd-s3-arrow', 4:'akd-s4-arrow'};
@@ -1028,15 +1234,15 @@ function importExcel() {
     }
     if (parsed.akademie) S.akademie = parsed.akademie;
     persist(); render(); renderAkademie(); renderEnemySelect();
-    // update settings UI fields if open
-    const sHpMax = document.getElementById('s-hp-max');
-    const sMpMax = document.getElementById('s-mp-max');
-    if (sHpMax) sHpMax.value = S.hpMax;
-    if (sMpMax) sMpMax.value = S.mpMax;
+    // always update visible stat fields
     STAT_KEYS.forEach(k => {
       const el = document.getElementById('my-'+k);
       if (el) el.value = S.myStats[k] || 0;
     });
+    const sHpMax = document.getElementById('s-hp-max');
+    const sMpMax = document.getElementById('s-mp-max');
+    if (sHpMax) sHpMax.value = S.hpMax;
+    if (sMpMax) sMpMax.value = S.mpMax;
     document.getElementById('excel-import-field').value = '';
     toast('✓ Excel-Daten importiert!');
   } catch(e) {
@@ -1236,15 +1442,17 @@ function loadSettingsUI() {
         <button class="enemy-del-btn" onclick="deleteEnemy(${i})">✕ Löschen</button>
       </div>
     </div>`).join('');
+
+  loadGroupEditor();
 }
 
-function toggleStats() {
-  const body=document.getElementById('stats-body');
-  const arrow=document.getElementById('stats-arrow');
-  const open=body.style.display==='none';
-  body.style.display=open?'block':'none';
-  arrow.textContent=open?'▲ verstecken':'▼ anzeigen';
-  if(open) renderStats();
+function toggleSection(id) {
+  const body = document.getElementById(id);
+  const arrow = document.getElementById('arr-'+id);
+  if (!body) return;
+  const open = body.style.display === 'none';
+  body.style.display = open ? 'block' : 'none';
+  if (arrow) arrow.textContent = open ? '▲' : '▼';
 }
 
 function renderStats() {
@@ -1320,6 +1528,8 @@ function collectAll() {
   });
   // my stats
   STAT_KEYS.forEach(k=>{ const v=parseInt(document.getElementById('my-'+k)?.value); if(!isNaN(v)) S.myStats[k]=v; });
+  // group
+  collectGroup();
 }
 
 function addPreset(type) {
@@ -1422,7 +1632,7 @@ function toast(msg) {
 }
 
 // ── INIT ──
-hydrate(); render(); renderEnemySelect(); renderAkademie();
+hydrate(); render(); renderEnemySelect(); renderAkademie(); renderGroupBars();
 setInterval(tick,1000);
 </script>
 </body>
