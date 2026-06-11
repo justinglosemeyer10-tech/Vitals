@@ -1079,37 +1079,47 @@ function renderGroupBars() {
   if (!el) return;
   if (!S.group.active) { el.innerHTML=''; return; }
   const count = S.group.count || 1;
+
+  // remember which dropdowns are open
+  const openStates = {};
+  document.querySelectorAll('.grp-stats').forEach(e => {
+    openStates[e.dataset.idx] = e.style.display !== 'none';
+  });
+
   const html = S.group.members.slice(0, count).map((m,i) => {
     const pct = Math.max(0, Math.min(100, Math.round((m.hp/m.hpMax)*100)));
+    const isOpen = openStates[i] || false;
     const statsRows = STAT_KEYS.map((k,si) => {
       const me = S.myStats[k]||0;
       const them = m[k]||0;
       if (me===0 && them===0) return '';
-      let diffStr = '=';
-      if (me > them && them > 0) diffStr = `<span style="color:var(--green)">Du +${Math.round(((me-them)/them)*100)}%</span>`;
-      else if (them > me && me > 0) diffStr = `<span style="color:var(--hp)">${m.name} +${Math.round(((them-me)/me)*100)}%</span>`;
-      else if (me > 0 && them === 0) diffStr = `<span style="color:var(--green)">Du +∞</span>`;
+      const meCol = me >= them ? 'var(--green)' : 'var(--hp)';
+      const themCol = them > me ? 'var(--green)' : 'var(--hp)';
+      let pctStr = '';
+      if (me > them && them > 0) pctStr = `<span style="color:var(--green);font-size:0.7rem">+${Math.round(((me-them)/them)*100)}%</span>`;
+      else if (them > me && me > 0) pctStr = `<span style="color:var(--hp);font-size:0.7rem">-${Math.round(((them-me)/me)*100)}%</span>`;
+      else pctStr = `<span style="color:var(--dim);font-size:0.7rem">=</span>`;
       return `<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid var(--border);font-size:0.75rem">
         <span style="color:var(--dim)">${STAT_LABELS[si]}</span>
         <span style="display:flex;gap:8px;align-items:center">
-          <span style="color:var(--green);font-weight:500">${me}</span>
+          <span style="color:${meCol};font-weight:600">${me}</span>
           <span style="color:var(--dim)">vs</span>
-          <span style="color:var(--gold);font-weight:500">${them}</span>
-          <span style="min-width:80px;text-align:right;font-size:0.7rem">${diffStr}</span>
+          <span style="color:${themCol};font-weight:600">${them}</span>
+          ${pctStr}
         </span>
       </div>`;
     }).filter(Boolean).join('');
 
-    return `<div class="group-bar-card" onclick="toggleGroupStats(${i})" style="cursor:pointer;touch-action:manipulation">
-      <div class="group-bar-top">
+    return `<div class="group-bar-card">
+      <div class="group-bar-top" onclick="toggleGroupStats(${i})" style="cursor:pointer;touch-action:manipulation">
         <span class="group-bar-name">👤 ${m.name}</span>
         <span style="display:flex;align-items:center;gap:8px">
           <span class="group-bar-val">${Math.round(m.hp)} <small style="color:var(--dim)">/ ${m.hpMax}</small></span>
-          <span class="grp-arrow" data-idx="${i}" style="color:var(--dim);font-size:0.7rem">▼</span>
+          <span class="grp-arrow" data-idx="${i}" style="color:var(--dim);font-size:0.7rem">${isOpen?'▲':'▼'}</span>
         </span>
       </div>
-      <div class="bar-bg"><div class="group-bar-fill" style="width:${pct}%"></div></div>
-      <div class="grp-stats" data-idx="${i}" style="display:none;margin-top:10px">
+      <div class="bar-bg" style="margin-top:6px"><div class="group-bar-fill" style="width:${pct}%"></div></div>
+      <div class="grp-stats" data-idx="${i}" style="display:${isOpen?'block':'none'};margin-top:10px">
         ${statsRows || '<span style="color:var(--dim);font-size:0.75rem;font-style:italic">Keine Stats eingetragen</span>'}
       </div>
     </div>`;
@@ -1200,7 +1210,21 @@ function loadGroupEditor() {
         <input type="number" class="enemy-stat-inp" id="grp-rint-${i}" value="${m.hpRegenInterval}" min="1" inputmode="numeric" style="width:60px">
         <span style="font-size:0.72rem;color:var(--dim)">Sek</span>
       </div>
+      <div style="display:flex;justify-content:flex-end;margin-top:8px">
+        <button onclick="deleteGroupMember(${i})" class="enemy-del-btn">✕ Entfernen</button>
+      </div>
     </div>`).join('');
+}
+
+function deleteGroupMember(i) {
+  collectGroup();
+  S.group.members.splice(i, 1);
+  // keep 3 members array length
+  while (S.group.members.length < 3) {
+    S.group.members.push({name:'Mitglied '+(S.group.members.length+1),hp:100,hpMax:100,hpRegenAmt:1,hpRegenInterval:60,staerke:0,magie:0,leben:0,geschw:0,ausdauer:0,intel:0});
+  }
+  S.group.count = Math.max(1, S.group.count - 1);
+  persist(); loadGroupEditor(); renderGroupBars();
 }
 
 function collectGroup() {
@@ -1222,6 +1246,16 @@ function collectGroup() {
   });
 }
 
+function deleteGroupMember(i) {
+  collectGroup();
+  S.group.members.splice(i, 1);
+  while (S.group.members.length < 3) {
+    S.group.members.push({name:'Mitglied '+(S.group.members.length+1),hp:100,hpMax:100,hpRegenAmt:1,hpRegenInterval:60,staerke:0,magie:0,leben:0,geschw:0,ausdauer:0,intel:0});
+  }
+  S.group.count = Math.max(1, S.group.count - 1);
+  persist(); loadGroupEditor(); renderGroupBars();
+}
+
 function importGroupMember() {
   const raw = document.getElementById('group-import-field').value.trim();
   if (!raw) { toast('Bitte Import-Text einfügen'); return; }
@@ -1231,18 +1265,14 @@ function importGroupMember() {
     const p = JSON.parse(match[1]);
     if (!p.name) { toast('⚠ Kein Name gefunden'); return; }
     const count = S.group.count || 1;
-    // find next free slot or expand count
     let slot = -1;
     for (let i = 0; i < 3; i++) {
       if (i >= count) { S.group.count = i+1; slot = i; break; }
     }
-    if (slot < 0) slot = count - 1; // overwrite last if all full
+    if (slot < 0) slot = count - 1;
     S.group.members[slot] = {
-      name: p.name,
-      hp: p.hpMax||p.leben||100,
-      hpMax: p.hpMax||p.leben||100,
-      hpRegenAmt: p.hpRegenAmt||1,
-      hpRegenInterval: p.hpRegenInterval||60,
+      name: p.name, hp: p.hpMax||p.leben||100, hpMax: p.hpMax||p.leben||100,
+      hpRegenAmt: p.hpRegenAmt||1, hpRegenInterval: p.hpRegenInterval||60,
       staerke: p.staerke||0, magie: p.magie||0, leben: p.leben||0,
       geschw: p.geschw||0, ausdauer: p.ausdauer||0, intel: p.intel||0,
     };
