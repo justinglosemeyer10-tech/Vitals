@@ -377,10 +377,10 @@ body::before {
         <div class="bar-bg"><div class="bar-fill" id="mp-bar" style="width:100%"></div></div>
         <div class="drain-badges" id="mp-drain-badges"></div>
       </div>
-    </div>
 
-    <!-- GROUP MEMBERS -->
-    <div id="group-bars" style="margin-bottom:8px"></div>
+      <!-- GROUP MEMBERS — sticky mit den Bars -->
+      <div id="group-bars" style="grid-column:1/-1;margin-top:4px"></div>
+    </div>
 
     <div class="divider"></div>
     <div class="input-row">
@@ -435,9 +435,8 @@ body::before {
         </div>
         <div class="bar-bg"><div class="bar-fill" id="mp-bar2" style="width:100%"></div></div>
       </div>
+      <div id="group-bars2" style="grid-column:1/-1;margin-top:4px"></div>
     </div>
-
-    <div id="group-bars2" style="margin-bottom:8px"></div>
 
     <p class="sec-title">Gegner auswählen</p>
     <div class="enemy-select-wrap">
@@ -626,6 +625,11 @@ body::before {
           </div>
         </div>
         <div id="group-members-editor"></div>
+        <div class="divider"></div>
+        <p style="font-size:0.72rem;color:var(--dim);margin-bottom:8px;font-style:italic">Mitglied per Import hinzufügen:</p>
+        <p style="font-size:0.68rem;color:var(--dim);margin-bottom:8px;font-family:monospace;background:var(--card2);padding:8px;border-radius:8px;word-break:break-all">GROUP_IMPORT:{"name":"Leon","staerke":120,"magie":80,"leben":200,"geschw":150,"ausdauer":100,"intel":60,"hpMax":200,"hpRegenAmt":1,"hpRegenInterval":60}</p>
+        <textarea id="group-import-field" placeholder="GROUP_IMPORT:{...} hier einfügen..." style="width:100%;background:var(--card2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:0.75rem;padding:10px;outline:none;font-family:'Inter',sans-serif;resize:none;min-height:50px;margin-bottom:8px"></textarea>
+        <button onclick="importGroupMember()" style="width:100%;padding:12px;border-radius:12px;background:rgba(77,255,136,0.08);border:1px solid rgba(77,255,136,0.3);color:var(--green);font-family:'Inter',sans-serif;font-size:0.85rem;font-weight:600;cursor:pointer;touch-action:manipulation">👤 Mitglied importieren</button>
       </div>
     </div>
 
@@ -697,9 +701,9 @@ let S = {
     active: false,
     count: 1,
     members: [
-      {name:'Mitglied 1', hp:100, hpMax:100, hpRegenAmt:1, hpRegenInterval:60},
-      {name:'Mitglied 2', hp:100, hpMax:100, hpRegenAmt:1, hpRegenInterval:60},
-      {name:'Mitglied 3', hp:100, hpMax:100, hpRegenAmt:1, hpRegenInterval:60},
+      {name:'Mitglied 1', hp:100, hpMax:100, hpRegenAmt:1, hpRegenInterval:60, staerke:0, magie:0, leben:0, geschw:0, ausdauer:0, intel:0},
+      {name:'Mitglied 2', hp:100, hpMax:100, hpRegenAmt:1, hpRegenInterval:60, staerke:0, magie:0, leben:0, geschw:0, ausdauer:0, intel:0},
+      {name:'Mitglied 3', hp:100, hpMax:100, hpRegenAmt:1, hpRegenInterval:60, staerke:0, magie:0, leben:0, geschw:0, ausdauer:0, intel:0},
     ]
   },
   mpPresets:[
@@ -1073,21 +1077,57 @@ let groupRegenAccs = [0,0,0];
 function renderGroupBars() {
   const el = document.getElementById('group-bars');
   if (!el) return;
-  if (!S.group.active) { el.style.display='none'; return; }
-  el.style.display='block';
+  if (!S.group.active) { el.innerHTML=''; return; }
   const count = S.group.count || 1;
-  el.innerHTML = S.group.members.slice(0, count).map((m,i) => {
+  const html = S.group.members.slice(0, count).map((m,i) => {
     const pct = Math.max(0, Math.min(100, Math.round((m.hp/m.hpMax)*100)));
-    return `<div class="group-bar-card">
+    const statsRows = STAT_KEYS.map((k,si) => {
+      const me = S.myStats[k]||0;
+      const them = m[k]||0;
+      if (me===0 && them===0) return '';
+      let diffStr = '=';
+      if (me > them && them > 0) diffStr = `<span style="color:var(--green)">Du +${Math.round(((me-them)/them)*100)}%</span>`;
+      else if (them > me && me > 0) diffStr = `<span style="color:var(--hp)">${m.name} +${Math.round(((them-me)/me)*100)}%</span>`;
+      else if (me > 0 && them === 0) diffStr = `<span style="color:var(--green)">Du +∞</span>`;
+      return `<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid var(--border);font-size:0.75rem">
+        <span style="color:var(--dim)">${STAT_LABELS[si]}</span>
+        <span style="display:flex;gap:8px;align-items:center">
+          <span style="color:var(--green);font-weight:500">${me}</span>
+          <span style="color:var(--dim)">vs</span>
+          <span style="color:var(--gold);font-weight:500">${them}</span>
+          <span style="min-width:80px;text-align:right;font-size:0.7rem">${diffStr}</span>
+        </span>
+      </div>`;
+    }).filter(Boolean).join('');
+
+    return `<div class="group-bar-card" onclick="toggleGroupStats(${i})" style="cursor:pointer;touch-action:manipulation">
       <div class="group-bar-top">
         <span class="group-bar-name">👤 ${m.name}</span>
-        <span class="group-bar-val">${Math.round(m.hp)} <small style="color:var(--dim)">/ ${m.hpMax}</small></span>
+        <span style="display:flex;align-items:center;gap:8px">
+          <span class="group-bar-val">${Math.round(m.hp)} <small style="color:var(--dim)">/ ${m.hpMax}</small></span>
+          <span class="grp-arrow" data-idx="${i}" style="color:var(--dim);font-size:0.7rem">▼</span>
+        </span>
       </div>
       <div class="bar-bg"><div class="group-bar-fill" style="width:${pct}%"></div></div>
+      <div class="grp-stats" data-idx="${i}" style="display:none;margin-top:10px">
+        ${statsRows || '<span style="color:var(--dim);font-size:0.75rem;font-style:italic">Keine Stats eingetragen</span>'}
+      </div>
     </div>`;
   }).join('');
+
+  el.innerHTML = html;
   const el2 = document.getElementById('group-bars2');
-  if (el2) el2.innerHTML = el.innerHTML;
+  if (el2) el2.innerHTML = html;
+}
+
+function toggleGroupStats(i) {
+  document.querySelectorAll(`.grp-stats[data-idx="${i}"]`).forEach(el => {
+    const open = el.style.display === 'none';
+    el.style.display = open ? 'block' : 'none';
+  });
+  document.querySelectorAll(`.grp-arrow[data-idx="${i}"]`).forEach(a => {
+    a.textContent = a.textContent === '▼' ? '▲' : '▼';
+  });
 }
 
 function tickGroup(delta) {
@@ -1143,9 +1183,15 @@ function loadGroupEditor() {
   el.innerHTML = S.group.members.slice(0, count).map((m,i)=>`
     <div style="background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:8px">
       <input type="text" class="pname-inp" id="grp-name-${i}" value="${m.name}" placeholder="Name" style="width:100%;margin-bottom:8px">
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:6px">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
         <div class="enemy-stat-inp-wrap"><label>Max Leben</label><input type="number" class="enemy-stat-inp" id="grp-hpmax-${i}" value="${m.hpMax}" min="1" inputmode="numeric"></div>
         <div class="enemy-stat-inp-wrap"><label>Aktuell</label><input type="number" class="enemy-stat-inp" id="grp-hp-${i}" value="${Math.round(m.hp)}" min="0" inputmode="numeric"></div>
+        <div class="enemy-stat-inp-wrap"><label>Stärke</label><input type="number" class="enemy-stat-inp" id="grp-staerke-${i}" value="${m.staerke||0}" inputmode="numeric"></div>
+        <div class="enemy-stat-inp-wrap"><label>Magie</label><input type="number" class="enemy-stat-inp" id="grp-magie-${i}" value="${m.magie||0}" inputmode="numeric"></div>
+        <div class="enemy-stat-inp-wrap"><label>Geschwindigkeit</label><input type="number" class="enemy-stat-inp" id="grp-geschw-${i}" value="${m.geschw||0}" inputmode="numeric"></div>
+        <div class="enemy-stat-inp-wrap"><label>Ausdauer</label><input type="number" class="enemy-stat-inp" id="grp-ausdauer-${i}" value="${m.ausdauer||0}" inputmode="numeric"></div>
+        <div class="enemy-stat-inp-wrap"><label>Intelligenz</label><input type="number" class="enemy-stat-inp" id="grp-intel-${i}" value="${m.intel||0}" inputmode="numeric"></div>
+        <div class="enemy-stat-inp-wrap"><label>Leben-Stat</label><input type="number" class="enemy-stat-inp" id="grp-leben-${i}" value="${m.leben||0}" inputmode="numeric"></div>
       </div>
       <div style="display:flex;align-items:center;gap:8px">
         <span style="font-size:0.72rem;color:var(--dim)">Regen:</span>
@@ -1167,7 +1213,43 @@ function collectGroup() {
     m.hp       = Math.min(m.hpMax, parseFloat(document.getElementById(`grp-hp-${i}`)?.value)||m.hp);
     m.hpRegenAmt      = parseFloat(document.getElementById(`grp-ramt-${i}`)?.value)||m.hpRegenAmt;
     m.hpRegenInterval = parseInt(document.getElementById(`grp-rint-${i}`)?.value)||m.hpRegenInterval;
+    m.staerke  = parseInt(document.getElementById(`grp-staerke-${i}`)?.value)||m.staerke||0;
+    m.magie    = parseInt(document.getElementById(`grp-magie-${i}`)?.value)||m.magie||0;
+    m.leben    = parseInt(document.getElementById(`grp-leben-${i}`)?.value)||m.leben||0;
+    m.geschw   = parseInt(document.getElementById(`grp-geschw-${i}`)?.value)||m.geschw||0;
+    m.ausdauer = parseInt(document.getElementById(`grp-ausdauer-${i}`)?.value)||m.ausdauer||0;
+    m.intel    = parseInt(document.getElementById(`grp-intel-${i}`)?.value)||m.intel||0;
   });
+}
+
+function importGroupMember() {
+  const raw = document.getElementById('group-import-field').value.trim();
+  if (!raw) { toast('Bitte Import-Text einfügen'); return; }
+  try {
+    const match = raw.match(/GROUP_IMPORT:\s*(\{[\s\S]*?\})/);
+    if (!match) { toast('⚠ Kein GROUP_IMPORT gefunden'); return; }
+    const p = JSON.parse(match[1]);
+    if (!p.name) { toast('⚠ Kein Name gefunden'); return; }
+    const count = S.group.count || 1;
+    // find next free slot or expand count
+    let slot = -1;
+    for (let i = 0; i < 3; i++) {
+      if (i >= count) { S.group.count = i+1; slot = i; break; }
+    }
+    if (slot < 0) slot = count - 1; // overwrite last if all full
+    S.group.members[slot] = {
+      name: p.name,
+      hp: p.hpMax||p.leben||100,
+      hpMax: p.hpMax||p.leben||100,
+      hpRegenAmt: p.hpRegenAmt||1,
+      hpRegenInterval: p.hpRegenInterval||60,
+      staerke: p.staerke||0, magie: p.magie||0, leben: p.leben||0,
+      geschw: p.geschw||0, ausdauer: p.ausdauer||0, intel: p.intel||0,
+    };
+    document.getElementById('group-import-field').value='';
+    persist(); loadGroupEditor(); renderGroupBars();
+    toast(`✓ ${p.name} importiert!`);
+  } catch(e) { toast('⚠ Ungültiges Format'); }
 }
 function toggleAkdStufe(stufe) {
   const bodies = {1:'akd-stufe1-body', 2:'akd-stufe2-body', 3:'akd-stufe3-body', 4:'akd-lehrer-body'};
