@@ -768,6 +768,16 @@ function hydrate() {
       S.mp = Math.min(S.mpMax, S.mp + mpG);
       const dHP = +(S.hp-oldHP).toFixed(1), dMP = +(S.mp-oldMP).toFixed(1);
       if (dHP>0||dMP>0) addLog(`Offline ${fmtTime(elapsed)}: ❤ +${dHP}  ✦ +${dMP}`,'info');
+
+      // group members offline regen
+      if (S.group && S.group.active) {
+        S.group.members.forEach(m => {
+          if (!m.hpRegenInterval || m.hpRegenInterval <= 0) m.hpRegenInterval = 60;
+          if (m.hpRegenAmt === undefined) m.hpRegenAmt = 1;
+          const gain = (m.hpRegenAmt / m.hpRegenInterval) * elapsed;
+          m.hp = Math.min(m.hpMax, m.hp + gain);
+        });
+      }
     }
     S.lastUpdate = now;
   } catch(e){}
@@ -1144,6 +1154,8 @@ function tickGroup(delta) {
   if (!S.group.active) return;
   const count = S.group.count || 1;
   S.group.members.slice(0, count).forEach((m,i) => {
+    if (!m.hpRegenInterval || m.hpRegenInterval <= 0) m.hpRegenInterval = 60;
+    if (m.hpRegenAmt === undefined) m.hpRegenAmt = 1;
     groupRegenAccs[i] = (groupRegenAccs[i]||0) + delta;
     if (groupRegenAccs[i] >= m.hpRegenInterval) {
       const t = Math.floor(groupRegenAccs[i]/m.hpRegenInterval);
