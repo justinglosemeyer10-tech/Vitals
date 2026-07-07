@@ -472,11 +472,13 @@ body::before {
         <table class="cmp-table" id="cmp-table"></table>
 
         <!-- LOOT BUTTON -->
-        <div id="loot-btn-wrap" style="display:none;margin-top:10px;text-align:right">
+        <div id="loot-btn-wrap" style="display:none;margin-top:10px;display:none;align-items:center;justify-content:flex-end;gap:8px">
+          <button id="loot-info-btn" onclick="toggleLootInfo(event)" style="background:none;border:none;color:rgba(212,168,75,0.5);font-size:0.85rem;cursor:pointer;padding:4px;touch-action:manipulation" title="Loot-Chancen">ℹ</button>
           <button onclick="startLoot()" style="padding:7px 14px;border-radius:10px;background:transparent;border:1px solid rgba(212,168,75,0.35);color:rgba(212,168,75,0.7);font-family:'Cinzel',serif;font-size:0.68rem;letter-spacing:0.1em;cursor:pointer;touch-action:manipulation">
             LOOT WÜRFELN
           </button>
         </div>
+        <div id="loot-info-panel" style="display:none;margin-top:8px;background:var(--card2);border:1px solid rgba(212,168,75,0.2);border-radius:10px;padding:10px 12px;font-size:0.72rem;color:var(--dim)"></div>
       </div>
     </div>
 
@@ -623,14 +625,6 @@ body::before {
           <label style="font-size:0.88rem">Gruppe aktiv</label>
           <input type="checkbox" id="group-active" style="width:20px;height:20px;accent-color:var(--green);cursor:pointer" onchange="toggleGroupActive()">
         </div>
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-          <label style="font-size:0.88rem">Anzahl Mitglieder<small style="display:block;color:var(--dim);font-size:0.72rem">1 bis 3</small></label>
-          <div style="display:flex;gap:6px">
-            <button onclick="setGroupCount(1)" id="gc-1" class="gc-btn">1</button>
-            <button onclick="setGroupCount(2)" id="gc-2" class="gc-btn">2</button>
-            <button onclick="setGroupCount(3)" id="gc-3" class="gc-btn">3</button>
-          </div>
-        </div>
         <div id="group-members-editor"></div>
         <div class="divider"></div>
         <p style="font-size:0.72rem;color:var(--dim);margin-bottom:8px;font-style:italic">Mitglied per Import hinzufügen:</p>
@@ -703,45 +697,72 @@ body::before {
 
 <!-- LOOT OVERLAY -->
 <div id="loot-overlay" style="display:none;position:fixed;inset:0;z-index:500;background:rgba(0,0,0,0.92);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);overflow-y:auto">
-  <div style="max-width:380px;margin:0 auto;padding:30px 20px calc(var(--safe-bot) + 30px)">
+  <div style="max-width:400px;margin:0 auto;padding:30px 20px calc(var(--safe-bot)+30px)">
 
-    <h2 style="font-family:'Cinzel',serif;color:var(--gold);text-align:center;letter-spacing:0.2em;font-size:1.2rem;margin-bottom:4px;text-shadow:0 0 20px rgba(212,168,75,0.5)" id="loot-title">LOOT</h2>
-    <p style="text-align:center;color:var(--dim);font-size:0.78rem;margin-bottom:20px;font-style:italic" id="loot-subtitle"></p>
+    <h2 id="loot-title" style="font-family:'Cinzel',serif;color:var(--gold);text-align:center;letter-spacing:0.2em;font-size:1.2rem;margin-bottom:4px;text-shadow:0 0 20px rgba(212,168,75,0.5)">LOOT</h2>
+    <p id="loot-subtitle" style="text-align:center;color:var(--dim);font-size:0.78rem;margin-bottom:24px;font-style:italic"></p>
 
-    <!-- WHEEL -->
-    <div style="position:relative;margin:0 auto 8px;width:280px;height:280px">
-      <canvas id="loot-wheel" width="280" height="280" style="display:block"></canvas>
-      <!-- pointer -->
-      <div style="position:absolute;top:-6px;left:50%;transform:translateX(-50%);color:var(--gold);font-size:1.6rem;line-height:1;filter:drop-shadow(0 0 6px rgba(212,168,75,0.8))">▼</div>
-    </div>
-
-    <button onclick="spinWheel()" id="spin-btn" style="width:100%;padding:15px;border-radius:14px;background:linear-gradient(135deg,rgba(212,168,75,0.2),rgba(212,168,75,0.06));border:1px solid rgba(212,168,75,0.6);color:var(--gold);font-family:'Cinzel',serif;font-size:0.9rem;letter-spacing:0.15em;cursor:pointer;touch-action:manipulation;margin-bottom:12px;text-shadow:0 0 10px rgba(212,168,75,0.4)">
-      🎰 DREHEN
-    </button>
+    <!-- CARDS -->
+    <div id="loot-cards" style="display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-bottom:20px"></div>
 
     <!-- RESULT -->
-    <div id="loot-result" style="display:none;background:rgba(10,10,18,0.8);border:1px solid var(--gold);border-radius:14px;padding:16px;margin-bottom:12px;text-align:center">
+    <div id="loot-result" style="display:none;background:rgba(10,10,18,0.9);border:1px solid var(--gold);border-radius:14px;padding:16px;margin-bottom:14px;text-align:center">
       <div id="loot-result-icon" style="font-size:2.2rem;margin-bottom:6px"></div>
       <div id="loot-result-name" style="font-size:1.05rem;font-weight:700;margin-bottom:4px;font-family:'Cinzel',serif;letter-spacing:0.05em"></div>
       <div id="loot-result-detail" style="font-size:0.75rem;color:var(--dim);font-style:italic"></div>
     </div>
 
-    <!-- SPIN AGAIN -->
+    <!-- NEXT ROUND -->
     <div id="spin-again-wrap" style="display:none;margin-bottom:12px">
-      <button onclick="spinAgain()" id="spin-again-btn" style="width:100%;padding:13px;border-radius:14px;background:rgba(77,255,136,0.08);border:1px solid rgba(77,255,136,0.35);color:var(--green);font-family:'Cinzel',serif;font-size:0.82rem;letter-spacing:0.1em;cursor:pointer;touch-action:manipulation">
-        🎲 NOCHMAL
-      </button>
+      <button onclick="spinAgain()" id="spin-again-btn" style="width:100%;padding:13px;border-radius:14px;background:rgba(77,255,136,0.08);border:1px solid rgba(77,255,136,0.35);color:var(--green);font-family:'Cinzel',serif;font-size:0.82rem;letter-spacing:0.1em;cursor:pointer;touch-action:manipulation">🎲 NOCHMAL</button>
       <p id="spin-again-chance" style="text-align:center;font-size:0.72rem;color:var(--dim);margin-top:6px"></p>
     </div>
 
     <!-- ALL RESULTS -->
     <div id="loot-all-results" style="margin-bottom:16px"></div>
 
-    <button onclick="closeLoot()" style="width:100%;padding:13px;border-radius:14px;background:transparent;border:1px solid var(--border);color:var(--dim);font-family:'Cinzel',serif;font-size:0.78rem;letter-spacing:0.1em;cursor:pointer;touch-action:manipulation">
-      ✕ SCHLIESSEN
-    </button>
+    <button onclick="closeLoot()" style="width:100%;padding:13px;border-radius:14px;background:transparent;border:1px solid var(--border);color:var(--dim);font-family:'Cinzel',serif;font-size:0.78rem;letter-spacing:0.1em;cursor:pointer;touch-action:manipulation">✕ SCHLIESSEN</button>
   </div>
 </div>
+
+<style>
+.loot-card {
+  width:90px; height:130px; cursor:pointer; touch-action:manipulation;
+  perspective:600px; flex-shrink:0;
+}
+.loot-card-inner {
+  width:100%; height:100%; position:relative;
+  transform-style:preserve-3d; transition:transform 0.55s ease;
+  border-radius:12px;
+}
+.loot-card.flipped .loot-card-inner { transform:rotateY(180deg); }
+.loot-card-front, .loot-card-back {
+  position:absolute; inset:0; border-radius:12px;
+  backface-visibility:hidden; -webkit-backface-visibility:hidden;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+}
+.loot-card-front {
+  background:linear-gradient(135deg,#1a1a2e,#0f0f1a);
+  border:1px solid rgba(212,168,75,0.5);
+  box-shadow:0 0 12px rgba(212,168,75,0.15);
+}
+.loot-card-front::before {
+  content:'✦';
+  font-size:2rem; color:rgba(212,168,75,0.3);
+}
+.loot-card-front::after {
+  content:''; position:absolute; inset:6px;
+  border:1px solid rgba(212,168,75,0.15); border-radius:8px;
+}
+.loot-card-back {
+  background:linear-gradient(135deg,#0f0f1a,#1a1a2e);
+  border:1px solid; transform:rotateY(180deg);
+  padding:8px; text-align:center; gap:6px;
+}
+.loot-card-back .card-icon { font-size:1.6rem; }
+.loot-card-back .card-name { font-size:0.62rem; font-weight:600; line-height:1.2; }
+.loot-card-back .card-sub  { font-size:0.55rem; color:var(--dim); }
+</style>
 
 <script>
 const STAT_KEYS = ['staerke','magie','leben','geschw','ausdauer','intel'];
@@ -760,7 +781,7 @@ let S = {
   inventory:[],
   group: {
     active: false,
-    count: 1,
+    memberActive: [true, false, false],
     members: [
       {name:'Mitglied 1', hp:100, hpMax:100, hpRegenAmt:1, hpRegenInterval:60, staerke:0, magie:0, leben:0, geschw:0, ausdauer:0, intel:0},
       {name:'Mitglied 2', hp:100, hpMax:100, hpRegenAmt:1, hpRegenInterval:60, staerke:0, magie:0, leben:0, geschw:0, ausdauer:0, intel:0},
@@ -804,12 +825,12 @@ function hydrate() {
     Object.assign(S, saved);
     if (!S.myStats) S.myStats = {staerke:0,magie:0,leben:0,geschw:0,ausdauer:0,intel:0};
     if (!S.enemies) S.enemies = [];
-    if (!S.group) S.group = {active:false, count:1, members:[
-      {name:'Mitglied 1',hp:100,hpMax:100,hpRegenAmt:1,hpRegenInterval:60},
-      {name:'Mitglied 2',hp:100,hpMax:100,hpRegenAmt:1,hpRegenInterval:60},
-      {name:'Mitglied 3',hp:100,hpMax:100,hpRegenAmt:1,hpRegenInterval:60},
+    if (!S.group) S.group = {active:false, memberActive:[true,false,false], members:[
+      {name:'Mitglied 1',hp:100,hpMax:100,hpRegenAmt:1,hpRegenInterval:60,staerke:0,magie:0,leben:0,geschw:0,ausdauer:0,intel:0},
+      {name:'Mitglied 2',hp:100,hpMax:100,hpRegenAmt:1,hpRegenInterval:60,staerke:0,magie:0,leben:0,geschw:0,ausdauer:0,intel:0},
+      {name:'Mitglied 3',hp:100,hpMax:100,hpRegenAmt:1,hpRegenInterval:60,staerke:0,magie:0,leben:0,geschw:0,ausdauer:0,intel:0},
     ]};
-    if (!S.group.count) S.group.count = 1;
+    if (!S.group.memberActive) S.group.memberActive = [true, false, false];
     S.enemies.forEach(e => { STAT_KEYS.forEach(k => { if(!e[k]) e[k]=0; }); });
     // patch presets with missing fields
     [...S.mpPresets,...S.hpPresets].forEach(p=>{
@@ -1074,7 +1095,25 @@ function renderEnemyPanel() {
 
   // loot button
   const lootWrap = document.getElementById('loot-btn-wrap');
-  if (lootWrap) lootWrap.style.display = e.loot ? 'block' : 'none';
+  if (lootWrap) {
+    lootWrap.style.display = e.loot ? 'flex' : 'none';
+    if (e.loot) {
+      const sp = e.loot.splitter;
+      const typChance = {'Schwach':75,'Mittel':50,'Stark':40,'Elite':40};
+      const splitterChance = typChance[sp?.typ] || 50;
+      const drops = e.loot.drops || [];
+      const RARITY_COLORS_LOCAL = {'Gewöhnlich':'#888','Selten':'#4d8fff','Episch':'#cc44ff','Legendär':'#ffaa00','Mystisch':'#ff44ff','Kern':'#ff4444'};
+      const infoPanel = document.getElementById('loot-info-panel');
+      if (infoPanel) {
+        infoPanel.innerHTML = `
+          <div style="margin-bottom:6px;color:var(--gold);font-weight:600">✦ Splitter: ${splitterChance}% (${sp?.name||'?'} · ${sp?.typ||''})</div>
+          ${drops.map(d=>`<div style="display:flex;justify-content:space-between;padding:2px 0">
+            <span style="color:${RARITY_COLORS_LOCAL[d.seltenheit]||'#888'}">${d.name}</span>
+            <span>${d.chance}%</span>
+          </div>`).join('')}`;
+      }
+    }
+  }
   const mySpeed = S.myStats.geschw || 0;
   const enemySpeed = e.geschw || 0;
   const dodgePct = enemySpeed > 0
@@ -1151,15 +1190,14 @@ function renderGroupBars() {
   const el = document.getElementById('group-bars');
   if (!el) return;
   if (!S.group.active) { el.innerHTML=''; return; }
-  const count = S.group.count || 1;
-
   // remember which dropdowns are open
   const openStates = {};
   document.querySelectorAll('.grp-stats').forEach(e => {
     openStates[e.dataset.idx] = e.style.display !== 'none';
   });
 
-  const html = S.group.members.slice(0, count).map((m,i) => {
+  const html = S.group.members.map((m,i) => {
+    if (!S.group.memberActive[i]) return '';
     const pct = Math.max(0, Math.min(100, Math.round((m.hp/m.hpMax)*100)));
     const isOpen = openStates[i] || false;
     const statsRows = STAT_KEYS.map((k,si) => {
@@ -1215,8 +1253,8 @@ function toggleGroupStats(i) {
 
 function tickGroup(delta) {
   if (!S.group.active) return;
-  const count = S.group.count || 1;
-  S.group.members.slice(0, count).forEach((m,i) => {
+  S.group.members.forEach((m,i) => {
+    if (!S.group.memberActive[i]) return;
     if (!m.hpRegenInterval || m.hpRegenInterval <= 0) m.hpRegenInterval = 60;
     if (m.hpRegenAmt === undefined) m.hpRegenAmt = 1;
     groupRegenAccs[i] = (groupRegenAccs[i]||0) + delta;
@@ -1234,21 +1272,19 @@ function groupAttack(dmg) {
   // targets: me + count group members
   const total = count + 1;
   const roll = Math.floor(Math.random() * total);
-  if (roll === 0) return null; // hits me
-  const m = S.group.members[roll - 1];
+  if (roll === 0) return null;
+  const m = S.group.members[activeIdxs[roll - 1]];
   m.hp = Math.max(0, m.hp - dmg);
   return m.name;
 }
 
-function setGroupCount(n) {
-  S.group.count = n;
-  [1,2,3].forEach(i => {
-    const btn = document.getElementById(`gc-${i}`);
-    if (btn) btn.className = 'gc-btn' + (i===n?' active':'');
-  });
-  loadGroupEditor();
+function toggleMemberActive(i) {
+  S.group.memberActive[i] = document.getElementById(`grp-active-${i}`).checked;
+  const card = document.getElementById(`grp-active-${i}`)?.closest('div[style]');
   persist(); renderGroupBars();
 }
+
+function setGroupCount(n) {} // kept for compatibility, no longer used
 
 function toggleGroupActive() {
   collectGroup();
@@ -1260,14 +1296,13 @@ function loadGroupEditor() {
   const el = document.getElementById('group-members-editor');
   if (!el) return;
   document.getElementById('group-active').checked = S.group.active;
-  const count = S.group.count || 1;
-  [1,2,3].forEach(i => {
-    const btn = document.getElementById(`gc-${i}`);
-    if (btn) btn.className = 'gc-btn' + (i===count?' active':'');
-  });
-  el.innerHTML = S.group.members.slice(0, count).map((m,i)=>`
-    <div style="background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:8px">
-      <input type="text" class="pname-inp" id="grp-name-${i}" value="${m.name}" placeholder="Name" style="width:100%;margin-bottom:8px">
+
+  el.innerHTML = S.group.members.map((m,i)=>`
+    <div style="background:var(--card2);border:1px solid ${S.group.memberActive[i]?'rgba(77,255,136,0.3)':'var(--border)'};border-radius:10px;padding:12px;margin-bottom:8px">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+        <input type="checkbox" id="grp-active-${i}" ${S.group.memberActive[i]?'checked':''} style="accent-color:var(--green);width:16px;height:16px;cursor:pointer" onchange="toggleMemberActive(${i})">
+        <input type="text" class="pname-inp" id="grp-name-${i}" value="${m.name}" placeholder="Name" style="flex:1">
+      </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
         <div class="enemy-stat-inp-wrap"><label>Max Leben</label><input type="number" class="enemy-stat-inp" id="grp-hpmax-${i}" value="${m.hpMax}" min="1" inputmode="numeric"></div>
         <div class="enemy-stat-inp-wrap"><label>Aktuell</label><input type="number" class="enemy-stat-inp" id="grp-hp-${i}" value="${Math.round(m.hp)}" min="0" inputmode="numeric"></div>
@@ -1298,15 +1333,15 @@ function deleteGroupMember(i) {
   while (S.group.members.length < 3) {
     S.group.members.push({name:'Mitglied '+(S.group.members.length+1),hp:100,hpMax:100,hpRegenAmt:1,hpRegenInterval:60,staerke:0,magie:0,leben:0,geschw:0,ausdauer:0,intel:0});
   }
-  S.group.count = Math.max(1, S.group.count - 1);
+  if (S.group.memberActive[i]) S.group.memberActive[i] = false;
   persist(); loadGroupEditor(); renderGroupBars();
 }
 
 function collectGroup() {
   const cb = document.getElementById('group-active');
   if (cb) S.group.active = cb.checked;
-  const count = S.group.count || 1;
-  S.group.members.slice(0, count).forEach((m,i) => {
+  S.group.members.forEach((m,i) => {
+    if (!S.group.memberActive[i]) return;
     m.name     = document.getElementById(`grp-name-${i}`)?.value || m.name;
     m.hpMax    = parseFloat(document.getElementById(`grp-hpmax-${i}`)?.value) || m.hpMax;
     m.hp       = Math.min(m.hpMax, parseFloat(document.getElementById(`grp-hp-${i}`)?.value)||m.hp);
@@ -1327,7 +1362,7 @@ function deleteGroupMember(i) {
   while (S.group.members.length < 3) {
     S.group.members.push({name:'Mitglied '+(S.group.members.length+1),hp:100,hpMax:100,hpRegenAmt:1,hpRegenInterval:60,staerke:0,magie:0,leben:0,geschw:0,ausdauer:0,intel:0});
   }
-  S.group.count = Math.max(1, S.group.count - 1);
+  if (S.group.memberActive[i]) S.group.memberActive[i] = false;
   persist(); loadGroupEditor(); renderGroupBars();
 }
 
@@ -1879,258 +1914,188 @@ function toast(msg) {
 }
 
 // ══════════════════════════════════════════
-//  LOOT SYSTEM
+//  LOOT SYSTEM — CARD FLIP
 // ══════════════════════════════════════════
 let lootState = {
-  enemy: null, spinning: false, angle: 0,
-  results: [], spinCount: 0, nextChance: 75,
-  phase: 'splitter', isFirstLoot: true,
+  enemy: null, results: [], nextChance: 75,
+  phase: 'splitter', cardRevealed: false,
 };
 
 const RARITY_COLORS = {
-  'Gewöhnlich': '#888899',
-  'Selten':     '#4d8fff',
-  'Episch':     '#cc44ff',
-  'Legendär':   '#ffaa00',
-  'Mystisch':   '#ff44ff',
-  'Kern':       '#ff4444',
-  'Splitter':   '#44ffaa',
-  'Nichts':     '#2a2a3a',
+  'Gewöhnlich':'#888899','Selten':'#4d8fff','Episch':'#cc44ff',
+  'Legendär':'#ffaa00','Mystisch':'#ff44ff','Kern':'#ff4444',
 };
+
+function toggleLootInfo(e) {
+  e.stopPropagation();
+  const panel = document.getElementById('loot-info-panel');
+  if (panel) panel.style.display = panel.style.display==='none' ? 'block' : 'none';
+}
 
 function startLoot() {
   const e = activeEnemyType==='a' ? S.akademie[activeEnemyIdx] : S.enemies[activeEnemyIdx];
   if (!e || !e.loot) return;
-  lootState = {enemy:e, spinning:false, angle:Math.random()*360, results:[], spinCount:0, nextChance:75, phase:'splitter', isFirstLoot:true};
+  lootState = {enemy:e, results:[], nextChance:75, phase:'splitter', cardRevealed:false};
   document.getElementById('loot-overlay').style.display='block';
   document.getElementById('loot-title').textContent = e.name;
-  document.getElementById('loot-subtitle').textContent = '✦ Skill-Fragment Chance';
   document.getElementById('loot-result').style.display='none';
   document.getElementById('spin-again-wrap').style.display='none';
   document.getElementById('loot-all-results').innerHTML='';
-  document.getElementById('spin-btn').style.display='block';
-  document.getElementById('spin-btn').textContent='🎰 DREHEN';
-  buildWheel('splitter');
+  showCards('splitter');
 }
 
 function closeLoot() {
   document.getElementById('loot-overlay').style.display='none';
 }
 
-function buildWheel(phase) {
+function rollResult(phase) {
   const e = lootState.enemy;
-  const canvas = document.getElementById('loot-wheel');
-  const ctx = canvas.getContext('2d');
-  const W = canvas.width, H = canvas.height;
-  const cx = W/2, cy = H/2, r = W/2 - 4;
-  ctx.clearRect(0, 0, W, H);
-
-  let segments = [];
   if (phase === 'splitter') {
     const sp = e.loot.splitter;
-    const chance = sp ? sp.chance : 50;
-    segments = [
-      {label: sp ? sp.name : 'Splitter', color:'#1a3d2a', border:'#44ffaa', textColor:'#44ffaa', prob: chance},
-      {label: 'Kein Splitter', color:'#1a1a2a', border:'#333344', textColor:'#555566', prob: 100-chance},
-    ];
+    const typChance = {'Schwach':75,'Mittel':50,'Stark':40,'Elite':40};
+    const chance = typChance[sp?.typ] || sp?.chance || 50;
+    return Math.random()*100 < chance
+      ? {won:true, label:sp?.name||'Splitter', icon:'✦', detail:`Skill-Fragment · ${sp?.typ||''} — Fähigkeit: ${sp?.name||''}`, color:'#44ffaa'}
+      : {won:false, label:'Kein Splitter', icon:'💨', detail:'', color:'#444455'};
   } else {
     const drops = e.loot.drops || [];
-    drops.forEach(d => {
-      const base = d.typ==='Kern' ? '#3d0000' : '#1a1a2a';
-      const border = d.typ==='Kern' ? '#ff4444' : (RARITY_COLORS[d.seltenheit] || '#888899');
-      segments.push({label: d.name, color: base, border, textColor: border, prob: d.chance, item: d});
-    });
-    const nothingProb = Math.max(10, 100 - drops.reduce((s,d)=>s+d.chance,0));
-    segments.push({label:'Nichts', color:'#111118', border:'#2a2a3a', textColor:'#444455', prob: nothingProb});
+    const won = drops.filter(d => Math.random()*100 < d.chance);
+    if (!won.length) return {won:false, label:'Nichts', icon:'💨', detail:'', color:'#333344'};
+    const d = won[Math.floor(Math.random()*won.length)];
+    const color = d.typ==='Kern' ? '#ff4444' : (RARITY_COLORS[d.seltenheit]||'#888899');
+    let icon='🎁';
+    if(d.typ==='Kern') icon='💎';
+    else if(d.typ==='Waffe') icon='⚔';
+    else if(['Helm','Brust','Beinrüstung','Schuhe','Handschuhe','Schmuck'].includes(d.typ)) icon='🛡';
+    const detail = d.typ==='Kern' ? 'Monster-Kern — extrem selten!' : d.seltenheit ? `${d.typ||'Material'} · ${d.seltenheit}` : (d.typ||'Material');
+    return {won:true, label:d.name, icon, detail, color, item:d};
   }
-
-  const total = segments.reduce((s,x)=>s+x.prob, 0);
-  // offset by current angle
-  let startAngle = (lootState.angle - 90) * Math.PI/180;
-
-  // outer glow ring
-  const grd = ctx.createRadialGradient(cx,cy,r-8,cx,cy,r+2);
-  grd.addColorStop(0,'rgba(212,168,75,0.0)');
-  grd.addColorStop(1,'rgba(212,168,75,0.25)');
-  ctx.beginPath(); ctx.arc(cx,cy,r+2,0,Math.PI*2);
-  ctx.fillStyle=grd; ctx.fill();
-
-  segments.forEach(seg => {
-    const sweep = (seg.prob/total) * 2*Math.PI;
-
-    // segment fill
-    ctx.beginPath();
-    ctx.moveTo(cx,cy);
-    ctx.arc(cx,cy,r,startAngle,startAngle+sweep);
-    ctx.closePath();
-    ctx.fillStyle = seg.color;
-    ctx.fill();
-
-    // segment border (colored)
-    ctx.beginPath();
-    ctx.moveTo(cx,cy);
-    ctx.arc(cx,cy,r,startAngle,startAngle+sweep);
-    ctx.closePath();
-    ctx.strokeStyle = seg.border;
-    ctx.lineWidth = 1.5;
-    ctx.stroke();
-
-    // label
-    if (sweep > 0.15) {
-      ctx.save();
-      ctx.translate(cx, cy);
-      ctx.rotate(startAngle + sweep/2);
-      ctx.textAlign = 'right';
-      ctx.fillStyle = seg.textColor;
-      const fs = sweep > 0.5 ? 11 : sweep > 0.25 ? 9 : 7;
-      ctx.font = `600 ${fs}px Inter,sans-serif`;
-      const maxLen = sweep > 0.5 ? 16 : 10;
-      const text = seg.label.length > maxLen ? seg.label.slice(0,maxLen-1)+'…' : seg.label;
-      ctx.fillText(text, r - 10, 4);
-      ctx.restore();
-    }
-
-    seg._startAngle = startAngle;
-    seg._sweep = sweep;
-    startAngle += sweep;
-  });
-
-  // center circle (dark)
-  ctx.beginPath();
-  ctx.arc(cx,cy,18,0,Math.PI*2);
-  const cGrd = ctx.createRadialGradient(cx,cy,0,cx,cy,18);
-  cGrd.addColorStop(0,'#2a2a3a');
-  cGrd.addColorStop(1,'#111118');
-  ctx.fillStyle = cGrd; ctx.fill();
-  ctx.strokeStyle='rgba(212,168,75,0.6)'; ctx.lineWidth=1.5; ctx.stroke();
-
-  // gold outer ring
-  ctx.beginPath();
-  ctx.arc(cx,cy,r,0,Math.PI*2);
-  ctx.strokeStyle='rgba(212,168,75,0.7)';
-  ctx.lineWidth=3; ctx.stroke();
-
-  lootState._segments = segments;
-  lootState._total = total;
 }
 
-function spinWheel() {
-  if (lootState.spinning) return;
-  lootState.spinning = true;
-  document.getElementById('spin-btn').style.display='none';
+function buildDecoys(phase, real) {
+  const e = lootState.enemy;
+  const pool = [];
+  if (phase==='splitter') {
+    const sp = e.loot.splitter;
+    const typChance = {'Schwach':75,'Mittel':50,'Stark':40,'Elite':40};
+    const chance = typChance[sp?.typ] || 50;
+    // out of 4 cards total, how many should be splitter?
+    // e.g. 75% → 3 splitter + 1 kein; 50% → 2+2; 40% → 1.6≈2+2; 25%→1+3
+    const splitterCards = Math.round(chance / 25); // 75→3, 50→2, 40→2, 25→1
+    const nothingCards = 4 - splitterCards;
+    // fill pool with 3 decoys (real is added separately)
+    // if real.won: need (splitterCards-1) more splitter decoys + nothingCards nothing decoys
+    // if real.lost: need splitterCards splitter decoys + (nothingCards-1) nothing decoys
+    const extraSplitters = real.won ? splitterCards - 1 : splitterCards;
+    const extraNothing   = real.won ? nothingCards     : nothingCards - 1;
+    for(let i=0;i<extraSplitters;i++) pool.push({label:'✦ Splitter', icon:'✦', color:'#44ffaa', detail:'Skill-Fragment'});
+    for(let i=0;i<extraNothing;i++)   pool.push({label:'Kein Splitter', icon:'💨', color:'#333344', detail:''});
+  } else {
+    (e.loot.drops||[]).forEach(d => {
+      if (d.name !== real.label) {
+        const color = d.typ==='Kern'?'#ff4444':(RARITY_COLORS[d.seltenheit]||'#888899');
+        let icon='🎁';
+        if(d.typ==='Kern') icon='💎';
+        else if(d.typ==='Waffe') icon='⚔';
+        else if(['Helm','Brust','Beinrüstung','Schuhe','Handschuhe','Schmuck'].includes(d.typ)) icon='🛡';
+        const detail = d.seltenheit ? `${d.typ||'Material'} · ${d.seltenheit}` : (d.typ||'Material');
+        pool.push({label:d.name, icon, color, detail});
+      }
+    });
+    pool.push({label:'Nichts', icon:'💨', color:'#333344', detail:''});
+    pool.push({label:'Nichts', icon:'💨', color:'#333344', detail:''});
+  }
+  for(let i=pool.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[pool[i],pool[j]]=[pool[j],pool[i]];}
+  return pool.slice(0,3);
+}
+
+function showCards(phase) {
+  lootState.cardRevealed = false;
+  document.getElementById('loot-subtitle').textContent = phase==='splitter' ? '✦ Skill-Fragment — wähle eine Karte' : '🎁 Loot — wähle eine Karte';
   document.getElementById('loot-result').style.display='none';
   document.getElementById('spin-again-wrap').style.display='none';
 
-  // if first loot spin, guarantee a result by steering away from "Nichts"
-  // we do this by picking a target segment then calculating angle needed
-  let targetAngle = null;
-  if (lootState.isFirstLoot && lootState.phase === 'loot') {
-    // pick a non-nothing segment weighted by prob
-    const segs = lootState._segments.filter(s=>s.label!=='Nichts');
-    if (segs.length) {
-      const tot = segs.reduce((s,x)=>s+x.prob,0);
-      let r = Math.random()*tot, acc=0, picked=segs[0];
-      for (const s of segs) { acc+=s.prob; if(r<=acc){picked=s;break;} }
-      // aim pointer (top=270°) at middle of segment
-      const segMidRad = picked._startAngle + picked._sweep/2;
-      const segMidDeg = (segMidRad * 180/Math.PI + 90 + 360) % 360;
-      targetAngle = segMidDeg;
-    }
-    lootState.isFirstLoot = false;
-  }
+  const real = rollResult(phase);
+  lootState._currentResult = real;
+  const decoys = buildDecoys(phase, real);
+  const cards = [...decoys];
+  const realPos = Math.floor(Math.random()*4);
+  cards.splice(realPos, 0, {...real, isReal:true});
+  lootState._cards = cards;
+  lootState._realPos = realPos;
 
-  const extraSpins = 5 + Math.floor(Math.random()*4);
-  let extraDeg = targetAngle !== null
-    ? ((targetAngle - lootState.angle % 360) + 360) % 360
-    : Math.random()*360;
-  const totalDeg = extraSpins*360 + extraDeg;
-  const duration = 3500 + Math.random()*800;
-  const start = Date.now();
-  const startAngle = lootState.angle;
-
-  function easeOut(t) { return 1-(1-t)*(1-t)*(1-t); }
-
-  function animate() {
-    const elapsed = Date.now()-start;
-    const t = Math.min(elapsed/duration, 1);
-    lootState.angle = (startAngle + totalDeg*easeOut(t)) % 360;
-    buildWheel(lootState.phase);
-    if (t < 1) requestAnimationFrame(animate);
-    else { lootState.spinning=false; resolveWheel(); }
-  }
-  requestAnimationFrame(animate);
+  document.getElementById('loot-cards').innerHTML = cards.map((c,i)=>`
+    <div class="loot-card" id="lc-${i}" onclick="flipCard(${i})">
+      <div class="loot-card-inner">
+        <div class="loot-card-front"></div>
+        <div class="loot-card-back" style="border-color:${c.color||'#888'};color:${c.color||'#fff'}">
+          <span class="card-icon">${c.icon}</span>
+          <span class="card-name" style="color:${c.color||'#fff'}">${c.label}</span>
+        </div>
+      </div>
+    </div>`).join('');
 }
 
-function resolveWheel() {
-  const pointer = (270 - lootState.angle % 360 + 360) % 360;
-  const pointerRad = pointer * Math.PI/180;
-  const segs = lootState._segments;
-  let won = segs[segs.length-1];
-  for (const seg of segs) {
-    if (pointerRad >= seg._startAngle && pointerRad < seg._startAngle+seg._sweep) { won=seg; break; }
+function flipCard(idx) {
+  if (lootState.cardRevealed) return;
+  lootState.cardRevealed = true;
+
+  // the result IS what's on the card you picked
+  const picked = lootState._cards[idx];
+  const real = lootState._currentResult;
+
+  document.getElementById(`lc-${idx}`).classList.add('flipped');
+
+  setTimeout(()=>{
+    // flip all others too
+    lootState._cards.forEach((_,j)=>{ if(j!==idx) document.getElementById(`lc-${j}`)?.classList.add('flipped'); });
+    // highlight the real jackpot card
+    setTimeout(()=>{
+      const realCard = document.getElementById(`lc-${lootState._realPos}`);
+      if(realCard) realCard.style.boxShadow=`0 0 18px ${real.color||'var(--gold)'}`;
+      // result = what you picked (not necessarily the real one)
+      showResult(picked);
+    }, 400);
+  }, 500);
+}
+
+function showResult(card) {
+  // determine if this card is a win
+  const isWin = card.won === true || (card.label !== 'Nichts' && card.label !== 'Kein Splitter');
+  const el = document.getElementById('loot-result');
+  el.style.display='block';
+  el.style.borderColor = card.color||'var(--gold)';
+  document.getElementById('loot-result-icon').textContent = card.icon||'💨';
+  document.getElementById('loot-result-name').textContent = card.label;
+  document.getElementById('loot-result-name').style.color = card.color||'var(--text)';
+  document.getElementById('loot-result-detail').textContent = card.detail||'';
+
+  if (isWin && card.detail !== undefined) {
+    if(!S.inventory) S.inventory=[];
+    S.inventory.push({icon:card.icon, name:card.label, detail:card.detail||'', from:lootState.enemy.name, date:new Date().toLocaleDateString('de-DE')});
+    lootState.results.push(card);
+    persist(); renderAllResults();
   }
-
-  const resultEl = document.getElementById('loot-result');
-  resultEl.style.display='block';
-  const gotSomething = won.label!=='Nichts' && won.label!=='Kein Splitter';
-
-  let icon='💨', detail='';
-  if (gotSomething) {
-    if (lootState.phase==='splitter') {
-      const sp = lootState.enemy.loot.splitter;
-      icon='✦';
-      detail=`Skill-Fragment · ${sp?.typ||''} — Fähigkeit: ${sp?.name||''}`;
-    } else if (won.item?.typ==='Kern')  { icon='💎'; detail='Monster-Kern — extrem selten!'; }
-    else if (won.item?.typ==='Waffe') { icon='⚔'; detail=`Waffe · ${won.item.seltenheit||''}`; }
-    else if (['Helm','Brust','Beinrüstung','Schuhe','Handschuhe','Schmuck'].includes(won.item?.typ)) {
-      icon='🛡'; detail=`${won.item.typ} · ${won.item.seltenheit||''}`;
-    } else { icon='🎁'; detail=won.item?.seltenheit||'Material'; }
-  }
-
-  document.getElementById('loot-result-icon').textContent=icon;
-  document.getElementById('loot-result-name').textContent=won.label;
-  document.getElementById('loot-result-detail').textContent=detail;
-  document.getElementById('loot-result-name').style.color=won.border||'var(--text)';
-  resultEl.style.borderColor=won.border||'var(--border)';
-
-  if (gotSomething) {
-    lootState.results.push({icon,name:won.label,detail,color:won.border});
-    // save to persistent inventory
-    if (!S.inventory) S.inventory=[];
-    S.inventory.push({
-      icon, name:won.label, detail,
-      from: lootState.enemy.name,
-      date: new Date().toLocaleDateString('de-DE')
-    });
-    persist();
-    renderAllResults();
-  }
-
-  lootState.spinCount++;
 
   if (lootState.phase==='splitter') {
     lootState.phase='loot';
-    lootState.nextChance=100; // first loot spin always available
-    setTimeout(()=>{ buildWheel('loot'); showSpinAgain(100,'Erster Loot — immer möglich!'); }, 900);
+    lootState.nextChance=100;
+    setTimeout(()=>showCards('loot'), 1400);
   } else {
     const prev = lootState.nextChance;
     lootState.nextChance = prev===100 ? 75 : Math.round(prev*0.55);
-    if (lootState.nextChance >= 8) showSpinAgain(lootState.nextChance);
-    else document.getElementById('loot-subtitle').textContent='Kein weiterer Loot verfügbar.';
+    if (lootState.nextChance >= 8) {
+      document.getElementById('spin-again-wrap').style.display='block';
+      document.getElementById('spin-again-chance').textContent=`${lootState.nextChance}% Chance auf weiteren Loot`;
+      document.getElementById('spin-again-btn').textContent=`🎲 NOCHMAL (${lootState.nextChance}%)`;
+    }
   }
-}
-
-function showSpinAgain(chance, label) {
-  const wrap = document.getElementById('spin-again-wrap');
-  wrap.style.display='block';
-  document.getElementById('spin-again-chance').textContent = label || `${chance}% Chance auf weiteren Loot`;
-  document.getElementById('spin-again-btn').textContent = chance===100 ? '🎰 LOOT DREHEN' : `🎲 NOCHMAL (${chance}%)`;
 }
 
 function spinAgain() {
   if (lootState.nextChance===100 || Math.random()*100 < lootState.nextChance) {
     document.getElementById('spin-again-wrap').style.display='none';
-    spinWheel();
+    showCards('loot');
   } else {
     document.getElementById('spin-again-wrap').style.display='none';
     document.getElementById('loot-subtitle').textContent='Kein weiterer Drop.';
@@ -2146,7 +2111,7 @@ function renderAllResults() {
       <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:10px;background:var(--card);border:1px solid ${r.color||'var(--border)'};margin-bottom:6px">
         <span style="font-size:1.3rem">${r.icon}</span>
         <div>
-          <div style="font-size:0.85rem;font-weight:600;color:${r.color||'var(--text)'}">${r.name}</div>
+          <div style="font-size:0.85rem;font-weight:600;color:${r.color||'var(--text)'}">${r.label}</div>
           <div style="font-size:0.72rem;color:var(--dim)">${r.detail}</div>
         </div>
       </div>`).join('');
