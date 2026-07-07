@@ -470,6 +470,13 @@ body::before {
         </div>
         <p class="sec-title" style="margin-top:4px">Gegenüberstellung</p>
         <table class="cmp-table" id="cmp-table"></table>
+
+        <!-- LOOT BUTTON -->
+        <div id="loot-btn-wrap" style="display:none;margin-top:10px;text-align:right">
+          <button onclick="startLoot()" style="padding:7px 14px;border-radius:10px;background:transparent;border:1px solid rgba(212,168,75,0.35);color:rgba(212,168,75,0.7);font-family:'Cinzel',serif;font-size:0.68rem;letter-spacing:0.1em;cursor:pointer;touch-action:manipulation">
+            LOOT WÜRFELN
+          </button>
+        </div>
       </div>
     </div>
 
@@ -600,7 +607,7 @@ body::before {
         <span>👾 Monster Import</span><span class="set-arrow" id="arr-monster">▼</span>
       </div>
       <div class="set-section-body" id="sec-monster" style="display:none">
-        <p style="font-size:0.75rem;color:var(--dim);margin-bottom:12px;font-style:italic">Füge den Text mit VITALIS_IMPORT: aus dem Monster-Chat ein</p>
+        <p style="font-size:0.75rem;color:var(--dim);margin-bottom:12px;font-style:italic">Füge den Text mit VITALIS_IMPORT: aus dem Monster-Chat ein. Enthält der Text auch VITALIS_LOOT: wird die Loot-Tabelle automatisch gespeichert.</p>
         <textarea id="monster-import-field" placeholder="VITALIS_IMPORT:{...} hier einfügen..." style="width:100%;background:var(--card2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:0.75rem;padding:10px;outline:none;font-family:'Inter',sans-serif;resize:none;min-height:60px;margin-bottom:8px"></textarea>
         <button onclick="importMonster()" style="width:100%;padding:13px;border-radius:12px;background:rgba(255,140,0,0.08);border:1px solid rgba(255,140,0,0.3);color:var(--enemy);font-family:'Inter',sans-serif;font-size:0.85rem;font-weight:600;cursor:pointer;touch-action:manipulation">👾 Monster hinzufügen</button>
       </div>
@@ -630,6 +637,17 @@ body::before {
         <p style="font-size:0.68rem;color:var(--dim);margin-bottom:8px;font-family:monospace;background:var(--card2);padding:8px;border-radius:8px;word-break:break-all">GROUP_IMPORT:{"name":"Leon","staerke":120,"magie":80,"leben":200,"geschw":150,"ausdauer":100,"intel":60,"hpMax":200,"hpRegenAmt":1,"hpRegenInterval":60}</p>
         <textarea id="group-import-field" placeholder="GROUP_IMPORT:{...} hier einfügen..." style="width:100%;background:var(--card2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:0.75rem;padding:10px;outline:none;font-family:'Inter',sans-serif;resize:none;min-height:50px;margin-bottom:8px"></textarea>
         <button onclick="importGroupMember()" style="width:100%;padding:12px;border-radius:12px;background:rgba(77,255,136,0.08);border:1px solid rgba(77,255,136,0.3);color:var(--green);font-family:'Inter',sans-serif;font-size:0.85rem;font-weight:600;cursor:pointer;touch-action:manipulation">👤 Mitglied importieren</button>
+      </div>
+    </div>
+
+    <!-- INVENTAR -->
+    <div class="set-card" style="margin-top:8px">
+      <div class="set-section-header" onclick="toggleSection('sec-inv');renderInventory()">
+        <span>🎒 Inventar</span><span class="set-arrow" id="arr-sec-inv">▼</span>
+      </div>
+      <div class="set-section-body" id="sec-inv" style="display:none">
+        <div id="inv-content"></div>
+        <button onclick="clearInventory()" style="margin-top:10px;width:100%;padding:10px;border-radius:10px;background:transparent;border:1px solid rgba(255,77,77,0.25);color:rgba(255,77,77,0.5);font-family:'Inter',sans-serif;font-size:0.75rem;cursor:pointer">Inventar leeren</button>
       </div>
     </div>
 
@@ -683,6 +701,48 @@ body::before {
 
 <div id="toast"></div>
 
+<!-- LOOT OVERLAY -->
+<div id="loot-overlay" style="display:none;position:fixed;inset:0;z-index:500;background:rgba(0,0,0,0.92);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);overflow-y:auto">
+  <div style="max-width:380px;margin:0 auto;padding:30px 20px calc(var(--safe-bot) + 30px)">
+
+    <h2 style="font-family:'Cinzel',serif;color:var(--gold);text-align:center;letter-spacing:0.2em;font-size:1.2rem;margin-bottom:4px;text-shadow:0 0 20px rgba(212,168,75,0.5)" id="loot-title">LOOT</h2>
+    <p style="text-align:center;color:var(--dim);font-size:0.78rem;margin-bottom:20px;font-style:italic" id="loot-subtitle"></p>
+
+    <!-- WHEEL -->
+    <div style="position:relative;margin:0 auto 8px;width:280px;height:280px">
+      <canvas id="loot-wheel" width="280" height="280" style="display:block"></canvas>
+      <!-- pointer -->
+      <div style="position:absolute;top:-6px;left:50%;transform:translateX(-50%);color:var(--gold);font-size:1.6rem;line-height:1;filter:drop-shadow(0 0 6px rgba(212,168,75,0.8))">▼</div>
+    </div>
+
+    <button onclick="spinWheel()" id="spin-btn" style="width:100%;padding:15px;border-radius:14px;background:linear-gradient(135deg,rgba(212,168,75,0.2),rgba(212,168,75,0.06));border:1px solid rgba(212,168,75,0.6);color:var(--gold);font-family:'Cinzel',serif;font-size:0.9rem;letter-spacing:0.15em;cursor:pointer;touch-action:manipulation;margin-bottom:12px;text-shadow:0 0 10px rgba(212,168,75,0.4)">
+      🎰 DREHEN
+    </button>
+
+    <!-- RESULT -->
+    <div id="loot-result" style="display:none;background:rgba(10,10,18,0.8);border:1px solid var(--gold);border-radius:14px;padding:16px;margin-bottom:12px;text-align:center">
+      <div id="loot-result-icon" style="font-size:2.2rem;margin-bottom:6px"></div>
+      <div id="loot-result-name" style="font-size:1.05rem;font-weight:700;margin-bottom:4px;font-family:'Cinzel',serif;letter-spacing:0.05em"></div>
+      <div id="loot-result-detail" style="font-size:0.75rem;color:var(--dim);font-style:italic"></div>
+    </div>
+
+    <!-- SPIN AGAIN -->
+    <div id="spin-again-wrap" style="display:none;margin-bottom:12px">
+      <button onclick="spinAgain()" id="spin-again-btn" style="width:100%;padding:13px;border-radius:14px;background:rgba(77,255,136,0.08);border:1px solid rgba(77,255,136,0.35);color:var(--green);font-family:'Cinzel',serif;font-size:0.82rem;letter-spacing:0.1em;cursor:pointer;touch-action:manipulation">
+        🎲 NOCHMAL
+      </button>
+      <p id="spin-again-chance" style="text-align:center;font-size:0.72rem;color:var(--dim);margin-top:6px"></p>
+    </div>
+
+    <!-- ALL RESULTS -->
+    <div id="loot-all-results" style="margin-bottom:16px"></div>
+
+    <button onclick="closeLoot()" style="width:100%;padding:13px;border-radius:14px;background:transparent;border:1px solid var(--border);color:var(--dim);font-family:'Cinzel',serif;font-size:0.78rem;letter-spacing:0.1em;cursor:pointer;touch-action:manipulation">
+      ✕ SCHLIESSEN
+    </button>
+  </div>
+</div>
+
 <script>
 const STAT_KEYS = ['staerke','magie','leben','geschw','ausdauer','intel'];
 const STAT_LABELS = ['Stärke','Magie','Leben','Geschwindigkeit','Ausdauer','Intelligenz'];
@@ -697,6 +757,7 @@ let S = {
   log:[],
   myStats:{staerke:0,magie:0,leben:0,geschw:0,ausdauer:0,intel:0},
   akademie:[],
+  inventory:[],
   group: {
     active: false,
     count: 1,
@@ -1011,7 +1072,9 @@ function renderEnemyPanel() {
   document.getElementById('atk-str-val').textContent = strDmg;
   document.getElementById('atk-mag-val').textContent = magDmg;
 
-  // dodge chance display
+  // loot button
+  const lootWrap = document.getElementById('loot-btn-wrap');
+  if (lootWrap) lootWrap.style.display = e.loot ? 'block' : 'none';
   const mySpeed = S.myStats.geschw || 0;
   const enemySpeed = e.geschw || 0;
   const dodgePct = enemySpeed > 0
@@ -1406,6 +1469,7 @@ function importMonster() {
       ausdauer: parsed.ausdauer || 0,
       intel: parsed.intel || 0,
       desc: desc.trim(),
+      loot: parsed.loot || null,
     });
     persist(); renderEnemySelect();
     document.getElementById('monster-import-field').value = '';
@@ -1568,6 +1632,65 @@ function loadSettingsUI() {
     </div>`).join('');
 
   loadGroupEditor();
+}
+
+function renderInventory() {
+  const el = document.getElementById('inv-content');
+  if (!el) return;
+  const inv = S.inventory || [];
+  if (!inv.length) {
+    el.innerHTML='<p style="color:var(--dim);font-size:0.8rem;font-style:italic">Noch nichts erbeutet.</p>';
+    return;
+  }
+  // group by monster, then stack by name
+  const byMonster = {};
+  inv.forEach((item, globalIdx) => {
+    if (!byMonster[item.from]) byMonster[item.from] = {};
+    const key = item.name;
+    if (!byMonster[item.from][key]) {
+      byMonster[item.from][key] = {...item, count:0, indices:[]};
+    }
+    byMonster[item.from][key].count++;
+    byMonster[item.from][key].indices.push(globalIdx);
+  });
+
+  el.innerHTML = Object.entries(byMonster).map(([monster, items]) => `
+    <div style="margin-bottom:12px">
+      <p style="font-size:0.7rem;color:var(--enemy);font-family:'Cinzel',serif;letter-spacing:0.1em;margin-bottom:6px">👹 ${monster}</p>
+      ${Object.entries(items).map(([key, item]) => `
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:7px 10px;border-radius:10px;background:var(--card2);border:1px solid var(--border);margin-bottom:4px">
+          <span style="display:flex;align-items:center;gap:8px">
+            <span style="font-size:1.1rem">${item.icon}</span>
+            <span>
+              <div style="display:flex;align-items:center;gap:6px">
+                <span style="font-size:0.82rem;font-weight:500">${item.name}</span>
+                ${item.count > 1 ? `<span style="background:rgba(212,168,75,0.2);border:1px solid rgba(212,168,75,0.5);color:var(--gold);font-size:0.68rem;font-weight:700;padding:1px 6px;border-radius:8px">×${item.count}</span>` : ''}
+              </div>
+              <div style="font-size:0.68rem;color:var(--dim)">${item.detail} · ${item.date}</div>
+            </span>
+          </span>
+          <button onclick="removeInventoryStack('${monster}','${key.replace(/'/g,"\\'")}',1)" style="background:none;border:none;color:var(--dim);font-size:1rem;cursor:pointer;padding:0 4px">✕</button>
+        </div>`).join('')}
+    </div>`).join('');
+}
+
+function removeInventoryStack(monster, name, amount) {
+  if (!S.inventory) return;
+  let removed = 0;
+  S.inventory = S.inventory.filter(item => {
+    if (item.from === monster && item.name === name && removed < amount) {
+      removed++;
+      return false;
+    }
+    return true;
+  });
+  persist(); renderInventory();
+}
+
+function clearInventory() {
+  if (!confirm('Inventar wirklich leeren?')) return;
+  S.inventory = [];
+  persist(); renderInventory();
 }
 
 function toggleSection(id) {
@@ -1755,7 +1878,280 @@ function toast(msg) {
   clearTimeout(toastT); toastT=setTimeout(()=>el.classList.remove('show'),2000);
 }
 
-// ── INIT ──
+// ══════════════════════════════════════════
+//  LOOT SYSTEM
+// ══════════════════════════════════════════
+let lootState = {
+  enemy: null, spinning: false, angle: 0,
+  results: [], spinCount: 0, nextChance: 75,
+  phase: 'splitter', isFirstLoot: true,
+};
+
+const RARITY_COLORS = {
+  'Gewöhnlich': '#888899',
+  'Selten':     '#4d8fff',
+  'Episch':     '#cc44ff',
+  'Legendär':   '#ffaa00',
+  'Mystisch':   '#ff44ff',
+  'Kern':       '#ff4444',
+  'Splitter':   '#44ffaa',
+  'Nichts':     '#2a2a3a',
+};
+
+function startLoot() {
+  const e = activeEnemyType==='a' ? S.akademie[activeEnemyIdx] : S.enemies[activeEnemyIdx];
+  if (!e || !e.loot) return;
+  lootState = {enemy:e, spinning:false, angle:Math.random()*360, results:[], spinCount:0, nextChance:75, phase:'splitter', isFirstLoot:true};
+  document.getElementById('loot-overlay').style.display='block';
+  document.getElementById('loot-title').textContent = e.name;
+  document.getElementById('loot-subtitle').textContent = '✦ Skill-Fragment Chance';
+  document.getElementById('loot-result').style.display='none';
+  document.getElementById('spin-again-wrap').style.display='none';
+  document.getElementById('loot-all-results').innerHTML='';
+  document.getElementById('spin-btn').style.display='block';
+  document.getElementById('spin-btn').textContent='🎰 DREHEN';
+  buildWheel('splitter');
+}
+
+function closeLoot() {
+  document.getElementById('loot-overlay').style.display='none';
+}
+
+function buildWheel(phase) {
+  const e = lootState.enemy;
+  const canvas = document.getElementById('loot-wheel');
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  const cx = W/2, cy = H/2, r = W/2 - 4;
+  ctx.clearRect(0, 0, W, H);
+
+  let segments = [];
+  if (phase === 'splitter') {
+    const sp = e.loot.splitter;
+    const chance = sp ? sp.chance : 50;
+    segments = [
+      {label: sp ? sp.name : 'Splitter', color:'#1a3d2a', border:'#44ffaa', textColor:'#44ffaa', prob: chance},
+      {label: 'Kein Splitter', color:'#1a1a2a', border:'#333344', textColor:'#555566', prob: 100-chance},
+    ];
+  } else {
+    const drops = e.loot.drops || [];
+    drops.forEach(d => {
+      const base = d.typ==='Kern' ? '#3d0000' : '#1a1a2a';
+      const border = d.typ==='Kern' ? '#ff4444' : (RARITY_COLORS[d.seltenheit] || '#888899');
+      segments.push({label: d.name, color: base, border, textColor: border, prob: d.chance, item: d});
+    });
+    const nothingProb = Math.max(10, 100 - drops.reduce((s,d)=>s+d.chance,0));
+    segments.push({label:'Nichts', color:'#111118', border:'#2a2a3a', textColor:'#444455', prob: nothingProb});
+  }
+
+  const total = segments.reduce((s,x)=>s+x.prob, 0);
+  // offset by current angle
+  let startAngle = (lootState.angle - 90) * Math.PI/180;
+
+  // outer glow ring
+  const grd = ctx.createRadialGradient(cx,cy,r-8,cx,cy,r+2);
+  grd.addColorStop(0,'rgba(212,168,75,0.0)');
+  grd.addColorStop(1,'rgba(212,168,75,0.25)');
+  ctx.beginPath(); ctx.arc(cx,cy,r+2,0,Math.PI*2);
+  ctx.fillStyle=grd; ctx.fill();
+
+  segments.forEach(seg => {
+    const sweep = (seg.prob/total) * 2*Math.PI;
+
+    // segment fill
+    ctx.beginPath();
+    ctx.moveTo(cx,cy);
+    ctx.arc(cx,cy,r,startAngle,startAngle+sweep);
+    ctx.closePath();
+    ctx.fillStyle = seg.color;
+    ctx.fill();
+
+    // segment border (colored)
+    ctx.beginPath();
+    ctx.moveTo(cx,cy);
+    ctx.arc(cx,cy,r,startAngle,startAngle+sweep);
+    ctx.closePath();
+    ctx.strokeStyle = seg.border;
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // label
+    if (sweep > 0.15) {
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.rotate(startAngle + sweep/2);
+      ctx.textAlign = 'right';
+      ctx.fillStyle = seg.textColor;
+      const fs = sweep > 0.5 ? 11 : sweep > 0.25 ? 9 : 7;
+      ctx.font = `600 ${fs}px Inter,sans-serif`;
+      const maxLen = sweep > 0.5 ? 16 : 10;
+      const text = seg.label.length > maxLen ? seg.label.slice(0,maxLen-1)+'…' : seg.label;
+      ctx.fillText(text, r - 10, 4);
+      ctx.restore();
+    }
+
+    seg._startAngle = startAngle;
+    seg._sweep = sweep;
+    startAngle += sweep;
+  });
+
+  // center circle (dark)
+  ctx.beginPath();
+  ctx.arc(cx,cy,18,0,Math.PI*2);
+  const cGrd = ctx.createRadialGradient(cx,cy,0,cx,cy,18);
+  cGrd.addColorStop(0,'#2a2a3a');
+  cGrd.addColorStop(1,'#111118');
+  ctx.fillStyle = cGrd; ctx.fill();
+  ctx.strokeStyle='rgba(212,168,75,0.6)'; ctx.lineWidth=1.5; ctx.stroke();
+
+  // gold outer ring
+  ctx.beginPath();
+  ctx.arc(cx,cy,r,0,Math.PI*2);
+  ctx.strokeStyle='rgba(212,168,75,0.7)';
+  ctx.lineWidth=3; ctx.stroke();
+
+  lootState._segments = segments;
+  lootState._total = total;
+}
+
+function spinWheel() {
+  if (lootState.spinning) return;
+  lootState.spinning = true;
+  document.getElementById('spin-btn').style.display='none';
+  document.getElementById('loot-result').style.display='none';
+  document.getElementById('spin-again-wrap').style.display='none';
+
+  // if first loot spin, guarantee a result by steering away from "Nichts"
+  // we do this by picking a target segment then calculating angle needed
+  let targetAngle = null;
+  if (lootState.isFirstLoot && lootState.phase === 'loot') {
+    // pick a non-nothing segment weighted by prob
+    const segs = lootState._segments.filter(s=>s.label!=='Nichts');
+    if (segs.length) {
+      const tot = segs.reduce((s,x)=>s+x.prob,0);
+      let r = Math.random()*tot, acc=0, picked=segs[0];
+      for (const s of segs) { acc+=s.prob; if(r<=acc){picked=s;break;} }
+      // aim pointer (top=270°) at middle of segment
+      const segMidRad = picked._startAngle + picked._sweep/2;
+      const segMidDeg = (segMidRad * 180/Math.PI + 90 + 360) % 360;
+      targetAngle = segMidDeg;
+    }
+    lootState.isFirstLoot = false;
+  }
+
+  const extraSpins = 5 + Math.floor(Math.random()*4);
+  let extraDeg = targetAngle !== null
+    ? ((targetAngle - lootState.angle % 360) + 360) % 360
+    : Math.random()*360;
+  const totalDeg = extraSpins*360 + extraDeg;
+  const duration = 3500 + Math.random()*800;
+  const start = Date.now();
+  const startAngle = lootState.angle;
+
+  function easeOut(t) { return 1-(1-t)*(1-t)*(1-t); }
+
+  function animate() {
+    const elapsed = Date.now()-start;
+    const t = Math.min(elapsed/duration, 1);
+    lootState.angle = (startAngle + totalDeg*easeOut(t)) % 360;
+    buildWheel(lootState.phase);
+    if (t < 1) requestAnimationFrame(animate);
+    else { lootState.spinning=false; resolveWheel(); }
+  }
+  requestAnimationFrame(animate);
+}
+
+function resolveWheel() {
+  const pointer = (270 - lootState.angle % 360 + 360) % 360;
+  const pointerRad = pointer * Math.PI/180;
+  const segs = lootState._segments;
+  let won = segs[segs.length-1];
+  for (const seg of segs) {
+    if (pointerRad >= seg._startAngle && pointerRad < seg._startAngle+seg._sweep) { won=seg; break; }
+  }
+
+  const resultEl = document.getElementById('loot-result');
+  resultEl.style.display='block';
+  const gotSomething = won.label!=='Nichts' && won.label!=='Kein Splitter';
+
+  let icon='💨', detail='';
+  if (gotSomething) {
+    if (lootState.phase==='splitter') {
+      const sp = lootState.enemy.loot.splitter;
+      icon='✦';
+      detail=`Skill-Fragment · ${sp?.typ||''} — Fähigkeit: ${sp?.name||''}`;
+    } else if (won.item?.typ==='Kern')  { icon='💎'; detail='Monster-Kern — extrem selten!'; }
+    else if (won.item?.typ==='Waffe') { icon='⚔'; detail=`Waffe · ${won.item.seltenheit||''}`; }
+    else if (['Helm','Brust','Beinrüstung','Schuhe','Handschuhe','Schmuck'].includes(won.item?.typ)) {
+      icon='🛡'; detail=`${won.item.typ} · ${won.item.seltenheit||''}`;
+    } else { icon='🎁'; detail=won.item?.seltenheit||'Material'; }
+  }
+
+  document.getElementById('loot-result-icon').textContent=icon;
+  document.getElementById('loot-result-name').textContent=won.label;
+  document.getElementById('loot-result-detail').textContent=detail;
+  document.getElementById('loot-result-name').style.color=won.border||'var(--text)';
+  resultEl.style.borderColor=won.border||'var(--border)';
+
+  if (gotSomething) {
+    lootState.results.push({icon,name:won.label,detail,color:won.border});
+    // save to persistent inventory
+    if (!S.inventory) S.inventory=[];
+    S.inventory.push({
+      icon, name:won.label, detail,
+      from: lootState.enemy.name,
+      date: new Date().toLocaleDateString('de-DE')
+    });
+    persist();
+    renderAllResults();
+  }
+
+  lootState.spinCount++;
+
+  if (lootState.phase==='splitter') {
+    lootState.phase='loot';
+    lootState.nextChance=100; // first loot spin always available
+    setTimeout(()=>{ buildWheel('loot'); showSpinAgain(100,'Erster Loot — immer möglich!'); }, 900);
+  } else {
+    const prev = lootState.nextChance;
+    lootState.nextChance = prev===100 ? 75 : Math.round(prev*0.55);
+    if (lootState.nextChance >= 8) showSpinAgain(lootState.nextChance);
+    else document.getElementById('loot-subtitle').textContent='Kein weiterer Loot verfügbar.';
+  }
+}
+
+function showSpinAgain(chance, label) {
+  const wrap = document.getElementById('spin-again-wrap');
+  wrap.style.display='block';
+  document.getElementById('spin-again-chance').textContent = label || `${chance}% Chance auf weiteren Loot`;
+  document.getElementById('spin-again-btn').textContent = chance===100 ? '🎰 LOOT DREHEN' : `🎲 NOCHMAL (${chance}%)`;
+}
+
+function spinAgain() {
+  if (lootState.nextChance===100 || Math.random()*100 < lootState.nextChance) {
+    document.getElementById('spin-again-wrap').style.display='none';
+    spinWheel();
+  } else {
+    document.getElementById('spin-again-wrap').style.display='none';
+    document.getElementById('loot-subtitle').textContent='Kein weiterer Drop.';
+    toast('Kein weiterer Loot 💨');
+  }
+}
+
+function renderAllResults() {
+  const el=document.getElementById('loot-all-results');
+  if (!lootState.results.length) { el.innerHTML=''; return; }
+  el.innerHTML=`<p style="font-size:0.65rem;color:var(--gold);letter-spacing:0.18em;text-transform:uppercase;margin-bottom:8px;font-family:'Cinzel',serif">⚔ Erbeutetes Loot</p>`+
+    lootState.results.map(r=>`
+      <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:10px;background:var(--card);border:1px solid ${r.color||'var(--border)'};margin-bottom:6px">
+        <span style="font-size:1.3rem">${r.icon}</span>
+        <div>
+          <div style="font-size:0.85rem;font-weight:600;color:${r.color||'var(--text)'}">${r.name}</div>
+          <div style="font-size:0.72rem;color:var(--dim)">${r.detail}</div>
+        </div>
+      </div>`).join('');
+}
+
 hydrate(); render(); renderEnemySelect(); renderAkademie(); renderGroupBars();
 setInterval(tick,1000);
 </script>
