@@ -468,6 +468,14 @@ body::before {
             <span class="atk-label">Schaden</span>
           </button>
         </div>
+
+        <!-- POISON BUTTON & STATUS -->
+        <div id="poison-btn-wrap" style="display:none;margin-top:8px">
+          <button onclick="enemyPoison()" id="poison-btn" style="width:100%;padding:10px;border-radius:12px;background:rgba(100,200,50,0.08);border:1px solid rgba(100,200,50,0.35);color:#88dd44;font-family:'Inter',sans-serif;font-size:0.82rem;font-weight:600;cursor:pointer;touch-action:manipulation">
+            ☠ VERGIFTEN
+          </button>
+          <div id="poison-status" style="display:none;margin-top:6px;padding:8px 12px;background:rgba(100,200,50,0.08);border:1px solid rgba(100,200,50,0.3);border-radius:10px;font-size:0.75rem;color:#88dd44;text-align:center;animation:pulse-d 1.5s infinite"></div>
+        </div>
         <p class="sec-title" style="margin-top:4px">Gegenüberstellung</p>
         <table class="cmp-table" id="cmp-table"></table>
 
@@ -1093,6 +1101,17 @@ function renderEnemyPanel() {
   document.getElementById('atk-str-val').textContent = strDmg;
   document.getElementById('atk-mag-val').textContent = magDmg;
 
+  // poison button
+  const poisonWrap = document.getElementById('poison-btn-wrap');
+  if (poisonWrap) {
+    const hasPoison = e.poison?.enabled === true;
+    poisonWrap.style.display = hasPoison ? 'block' : 'none';
+    if (hasPoison) {
+      const btn = document.getElementById('poison-btn');
+      if (btn) btn.textContent = `☠ VERGIFTEN (${e.poison.dmg||1}/s · ${e.poison.duration||15}s)`;
+    }
+  }
+
   // loot button
   const lootWrap = document.getElementById('loot-btn-wrap');
   if (lootWrap) {
@@ -1172,8 +1191,8 @@ function enemyAttack(type) {
     // group targeting
     const groupTarget = S.group.active ? groupAttack(dmg) : null;
     if (groupTarget) {
-      if(isCrit){showCritFlash();addLog(`💥 ${e.name} KRIT ${label} → ${groupTarget}! −${dmg} (×2)`,'neg-hp');toast(`💥 KRIT auf ${groupTarget}! −${dmg}`);}
-      else{addLog(`💥 ${e.name} ${label} → ${groupTarget} −${dmg}`,'neg-hp');toast(`${groupTarget}: −${dmg}`);}
+      if(isCrit){showCritFlash();addLog(`💥 ${e.name} KRIT ${label} → ${groupTarget.name}! −${dmg} (×2)`,'neg-hp');toast(`💥 KRIT auf ${groupTarget.name}! −${dmg}`);}
+      else{addLog(`💥 ${e.name} ${label} → ${groupTarget.name} −${dmg}`,'neg-hp');toast(`${groupTarget.name}: −${dmg}`);}
     } else {
       S.hp=Math.max(0,S.hp-dmg);
       if(isCrit){showCritFlash();addLog(`💥 ${e.name} KRIT ${label}! −${dmg} (×2)`,'neg-hp');toast(`💥 KRIT! −${dmg}`);}
@@ -1268,14 +1287,29 @@ function tickGroup(delta) {
 
 function groupAttack(dmg) {
   if (!S.group.active) return null;
-  const count = S.group.count || 1;
-  // targets: me + count group members
-  const total = count + 1;
-  const roll = Math.floor(Math.random() * total);
-  if (roll === 0) return null;
-  const m = S.group.members[activeIdxs[roll - 1]];
+  const activeIdxs = S.group.members.map((_,i)=>i).filter(i=>S.group.memberActive[i]);
+  if (!activeIdxs.length) return null;
+
+  const hasCustom = activeIdxs.some(i => S.group.members[i].attackProb > 0);
+  const pool = [];
+  if (hasCustom) {
+    let remaining = 100;
+    activeIdxs.forEach(i => {
+      const prob = S.group.members[i].attackProb || 0;
+      for(let j=0;j<prob;j++) pool.push({type:'member',idx:i});
+      remaining -= prob;
+    });
+    for(let j=0;j<Math.max(0,remaining);j++) pool.push({type:'me'});
+  } else {
+    pool.push({type:'me'});
+    activeIdxs.forEach(i => pool.push({type:'member',idx:i}));
+  }
+
+  const pick = pool[Math.floor(Math.random()*pool.length)];
+  if (pick.type==='me') return null;
+  const m = S.group.members[pick.idx];
   m.hp = Math.max(0, m.hp - dmg);
-  return m.name;
+  return {name: m.name, idx: pick.idx};
 }
 
 function toggleMemberActive(i) {
@@ -1319,6 +1353,11 @@ function loadGroupEditor() {
         <span style="font-size:0.72rem;color:var(--dim)">pro</span>
         <input type="number" class="enemy-stat-inp" id="grp-rint-${i}" value="${m.hpRegenInterval}" min="1" inputmode="numeric" style="width:60px">
         <span style="font-size:0.72rem;color:var(--dim)">Sek</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;margin-top:8px">
+        <span style="font-size:0.72rem;color:var(--dim)">Angriffswahrscheinlichkeit:</span>
+        <input type="number" class="enemy-stat-inp" id="grp-prob-${i}" value="${m.attackProb||''}" min="0" max="100" style="width:55px" inputmode="numeric" placeholder="auto">
+        <span style="font-size:0.72rem;color:var(--dim)">%</span>
       </div>
       <div style="display:flex;justify-content:flex-end;margin-top:8px">
         <button onclick="deleteGroupMember(${i})" class="enemy-del-btn">✕ Entfernen</button>
@@ -1391,6 +1430,78 @@ function importGroupMember() {
     toast(`✓ ${p.name} importiert!`);
   } catch(e) { toast('⚠ Ungültiges Format'); }
 }
+// ── POISON ──
+let poisonTimers = []; // supports stacking
+
+function enemyPoison() {
+  const e = activeEnemyType==='a' ? S.akademie[activeEnemyIdx] : S.enemies[activeEnemyIdx];
+  if (!e?.poison?.enabled) return;
+
+  const target = getRandomTarget();
+  const dmg = e.poison.dmg || 1;
+  const duration = e.poison.duration || 15;
+  let remaining = duration;
+
+  addLog(`☠ ${e.name} vergiftet ${target.name}! (${dmg}/s · ${duration}s)`, 'neg-hp');
+  toast(`☠ ${target.name} vergiftet!`);
+
+  const id = setInterval(()=>{
+    if (remaining <= 0) {
+      clearInterval(id);
+      poisonTimers = poisonTimers.filter(t=>t.id!==id);
+      updatePoisonStatus();
+      if (poisonTimers.length===0) addLog('☠ Gift abgeklungen','info');
+      render(); return;
+    }
+    if (target.idx === -1) {
+      S.hp = Math.max(0, S.hp - dmg);
+    } else {
+      const m = S.group.members[target.idx];
+      if (m) m.hp = Math.max(0, m.hp - dmg);
+    }
+    remaining--;
+    updatePoisonStatus(); render(); persist();
+  }, 1000);
+
+  poisonTimers.push({id, targetName:target.name, remaining:()=>remaining});
+  updatePoisonStatus();
+}
+
+function updatePoisonStatus() {
+  const statusEl = document.getElementById('poison-status');
+  const btnEl = document.getElementById('poison-btn');
+  if (!statusEl) return;
+  if (poisonTimers.length > 0) {
+    statusEl.style.display='block';
+    statusEl.textContent = poisonTimers.map(t=>`☠ ${t.targetName} — ${t.remaining()}s`).join('  ·  ');
+  } else {
+    statusEl.style.display='none';
+  }
+  const e = activeEnemyType==='a' ? S.akademie[activeEnemyIdx] : S.enemies[activeEnemyIdx];
+  if (btnEl && e?.poison) btnEl.textContent=`☠ VERGIFTEN (${e.poison.dmg||1}/s · ${e.poison.duration||15}s)`;
+}
+
+function getRandomTarget() {
+  if (!S.group.active) return {name:'Du', idx:-1};
+  const activeIdxs = S.group.members.map((_,i)=>i).filter(i=>S.group.memberActive[i]);
+  if (!activeIdxs.length) return {name:'Du', idx:-1};
+  const hasCustom = activeIdxs.some(i => S.group.members[i].attackProb > 0);
+  const pool = [];
+  if (hasCustom) {
+    let remaining = 100;
+    activeIdxs.forEach(i => {
+      const prob = S.group.members[i].attackProb || 0;
+      for(let j=0;j<prob;j++) pool.push({name:S.group.members[i].name, idx:i});
+      remaining -= prob;
+    });
+    for(let j=0;j<Math.max(0,remaining);j++) pool.push({name:'Du', idx:-1});
+  } else {
+    pool.push({name:'Du', idx:-1});
+    activeIdxs.forEach(i => pool.push({name:S.group.members[i].name, idx:i}));
+  }
+  return pool[Math.floor(Math.random()*pool.length)];
+}
+
 function toggleAkdStufe(stufe) {
   const bodies = {1:'akd-stufe1-body', 2:'akd-stufe2-body', 3:'akd-stufe3-body', 4:'akd-lehrer-body'};
   const arrows = {1:'akd-s1-arrow', 2:'akd-s2-arrow', 3:'akd-s3-arrow', 4:'akd-s4-arrow'};
@@ -1662,6 +1773,19 @@ function loadSettingsUI() {
         <div style="font-size:0.72rem;color:var(--dim);margin-bottom:8px">
           Angriff: ${Math.max(1,Math.round((e.staerke||0)/10))} | Magie: ${Math.max(1,Math.round((e.magie||0)/10))}
         </div>
+        <div style="background:rgba(100,200,50,0.05);border:1px solid rgba(100,200,50,0.2);border-radius:8px;padding:10px;margin-bottom:8px">
+          <label style="display:flex;align-items:center;gap:8px;margin-bottom:8px;font-size:0.8rem;cursor:pointer">
+            <input type="checkbox" id="en-poison-${i}" ${e.poison?.enabled?'checked':''} style="accent-color:#88dd44;width:16px;height:16px">
+            <span style="color:#88dd44">☠ Kann vergiften</span>
+          </label>
+          <div style="display:flex;gap:8px;align-items:center">
+            <span style="font-size:0.72rem;color:var(--dim)">Schaden:</span>
+            <input type="number" class="enemy-stat-inp" id="en-pdmg-${i}" value="${e.poison?.dmg||1}" min="0.1" step="0.1" style="width:60px" inputmode="decimal">
+            <span style="font-size:0.72rem;color:var(--dim)">/Sek · Dauer:</span>
+            <input type="number" class="enemy-stat-inp" id="en-pdur-${i}" value="${e.poison?.duration||15}" min="1" style="width:55px" inputmode="numeric">
+            <span style="font-size:0.72rem;color:var(--dim)">Sek</span>
+          </div>
+        </div>
         <button class="enemy-del-btn" onclick="deleteEnemy(${i})">✕ Löschen</button>
       </div>
     </div>`).join('');
@@ -1807,6 +1931,15 @@ function collectAll() {
     e.name=document.getElementById(`en-name-${i}`)?.value||e.name;
     e.desc=document.getElementById(`en-desc-${i}`)?.value||e.desc||'';
     STAT_KEYS.forEach(k=>{ const v=parseInt(document.getElementById(`en-${k}-${i}`)?.value); if(!isNaN(v)) e[k]=v; });
+    e.poison = {
+      enabled: document.getElementById(`en-poison-${i}`)?.checked||false,
+      dmg: parseFloat(document.getElementById(`en-pdmg-${i}`)?.value)||1,
+      duration: parseInt(document.getElementById(`en-pdur-${i}`)?.value)||15,
+    };
+  });
+  S.group.members.forEach((m,i)=>{
+    const prob = parseInt(document.getElementById(`grp-prob-${i}`)?.value);
+    m.attackProb = isNaN(prob) ? null : prob;
   });
   // my stats
   STAT_KEYS.forEach(k=>{ const v=parseInt(document.getElementById('my-'+k)?.value); if(!isNaN(v)) S.myStats[k]=v; });
