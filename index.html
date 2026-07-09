@@ -1082,7 +1082,9 @@ function renderEnemyPanel() {
     : S.enemies[activeEnemyIdx];
   if (!e) return;
 
-  document.getElementById('enemy-active-name').textContent = e.name;
+  document.getElementById('enemy-active-name').textContent = (e.elite ? '⚡ ' : '') + e.name;
+  document.getElementById('enemy-active-name').style.color = e.elite ? '#ffaa00' : 'var(--enemy)';
+  updateEliteToggle(e);
 
   // desc dropdown
   const descWrap = document.getElementById('enemy-desc-wrap');
@@ -1117,6 +1119,7 @@ function renderEnemyPanel() {
   if (lootWrap) {
     lootWrap.style.display = e.loot ? 'flex' : 'none';
     if (e.loot) {
+      const isElite = e.elite === true;
       const sp = e.loot.splitter;
       const typChance = {'Schwach':75,'Mittel':50,'Stark':40,'Elite':40};
       const splitterChance = typChance[sp?.typ] || 50;
@@ -1124,12 +1127,19 @@ function renderEnemyPanel() {
       const RARITY_COLORS_LOCAL = {'Gewöhnlich':'#888','Selten':'#4d8fff','Episch':'#cc44ff','Legendär':'#ffaa00','Mystisch':'#ff44ff','Kern':'#ff4444'};
       const infoPanel = document.getElementById('loot-info-panel');
       if (infoPanel) {
+        const scaledDrops = drops.map(d => {
+          if (!isElite) return {...d, displayChance: d.chance};
+          if (d.typ==='Kern') return {...d, displayChance: Math.min(99, d.chance*5)};
+          const mult = {'Gewöhnlich':1.3,'Selten':1.6,'Episch':2.0,'Legendär':2.5,'Mystisch':3.0}[d.seltenheit]||1.4;
+          return {...d, displayChance: Math.min(99, Math.round(d.chance*mult))};
+        });
         infoPanel.innerHTML = `
-          <div style="margin-bottom:6px;color:var(--gold);font-weight:600">✦ Splitter: ${splitterChance}% (${sp?.name||'?'} · ${sp?.typ||''})</div>
-          ${drops.map(d=>`<div style="display:flex;justify-content:space-between;padding:2px 0">
+          <div style="margin-bottom:6px;color:var(--gold);font-weight:600">✦ Splitter: ${splitterChance}% · ${sp?.name||'?'} (${sp?.typ||''})${isElite?' → ×5 bei Erfolg':''}</div>
+          ${scaledDrops.map(d=>`<div style="display:flex;justify-content:space-between;padding:2px 0">
             <span style="color:${RARITY_COLORS_LOCAL[d.seltenheit]||'#888'}">${d.name}</span>
-            <span>${d.chance}%</span>
-          </div>`).join('')}`;
+            <span>${isElite&&d.chance!==d.displayChance?`<span style="color:var(--dim);text-decoration:line-through;font-size:0.7rem">${d.chance}%</span> `:''}<span style="color:${isElite?'#ffaa00':'var(--text)'}">${d.displayChance}%</span></span>
+          </div>`).join('')}
+          ${isElite?'<div style="margin-top:6px;font-size:0.7rem;color:#ffaa00">⚡ Elite: Loot-Chancen erhöht</div>':''}`;
       }
     }
   }
@@ -1773,6 +1783,12 @@ function loadSettingsUI() {
         <div style="font-size:0.72rem;color:var(--dim);margin-bottom:8px">
           Angriff: ${Math.max(1,Math.round((e.staerke||0)/10))} | Magie: ${Math.max(1,Math.round((e.magie||0)/10))}
         </div>
+        <div style="background:rgba(255,170,0,0.05);border:1px solid rgba(255,170,0,0.2);border-radius:8px;padding:10px;margin-bottom:8px">
+          <label style="display:flex;align-items:center;gap:8px;font-size:0.8rem;cursor:pointer">
+            <input type="checkbox" id="en-elite-${i}" ${e.elite?'checked':''} style="accent-color:#ffaa00;width:16px;height:16px" onchange="toggleEliteFromSettings(${i})">
+            <span style="color:#ffaa00">⚡ Elite-Monster</span>
+          </label>
+        </div>
         <div style="background:rgba(100,200,50,0.05);border:1px solid rgba(100,200,50,0.2);border-radius:8px;padding:10px;margin-bottom:8px">
           <label style="display:flex;align-items:center;gap:8px;margin-bottom:8px;font-size:0.8rem;cursor:pointer">
             <input type="checkbox" id="en-poison-${i}" ${e.poison?.enabled?'checked':''} style="accent-color:#88dd44;width:16px;height:16px">
@@ -1886,8 +1902,43 @@ function resetStats() {
   persist(); renderStats();
 }
 
+function toggleEliteFromSettings(i) {
+  const e = S.enemies[i];
+  if (!e) return;
+  e.elite = document.getElementById(`en-elite-${i}`)?.checked || false;
+  persist();
+  // update enemy panel if this enemy is active
+  if (activeEnemyType === 'e' && activeEnemyIdx === i) {
+    renderEnemyPanel();
+  }
+}
+
+function toggleElite() {
+  const e = activeEnemyType==='a' ? S.akademie[activeEnemyIdx] : S.enemies[activeEnemyIdx];
+  if (!e) return;
+  e.elite = !e.elite;
+  persist();
+  renderEnemyPanel();
+  toast(e.elite ? '⚡ Elite aktiviert!' : 'Elite deaktiviert');
+}
+
+function updateEliteToggle(e) {
+  const btn = document.getElementById('elite-toggle-btn');
+  if (!btn) return;
+  if (e?.elite) {
+    btn.textContent = 'AN ⚡';
+    btn.style.background = 'rgba(255,170,0,0.2)';
+    btn.style.borderColor = 'rgba(255,170,0,0.7)';
+    btn.style.color = '#ffaa00';
+  } else {
+    btn.textContent = 'AUS';
+    btn.style.background = 'transparent';
+    btn.style.borderColor = 'rgba(255,170,0,0.35)';
+    btn.style.color = 'rgba(255,170,0,0.6)';
+  }
+}
+
 function toggleEnemyDesc() {
-  const el = document.getElementById('enemy-desc-text');
   const btn = document.getElementById('enemy-desc-toggle');
   const open = el.style.display === 'none';
   el.style.display = open ? 'block' : 'none';
@@ -1931,6 +1982,7 @@ function collectAll() {
     e.name=document.getElementById(`en-name-${i}`)?.value||e.name;
     e.desc=document.getElementById(`en-desc-${i}`)?.value||e.desc||'';
     STAT_KEYS.forEach(k=>{ const v=parseInt(document.getElementById(`en-${k}-${i}`)?.value); if(!isNaN(v)) e[k]=v; });
+    e.elite = document.getElementById(`en-elite-${i}`)?.checked || false;
     e.poison = {
       enabled: document.getElementById(`en-poison-${i}`)?.checked||false,
       dmg: parseFloat(document.getElementById(`en-pdmg-${i}`)?.value)||1,
@@ -2068,9 +2120,11 @@ function toggleLootInfo(e) {
 function startLoot() {
   const e = activeEnemyType==='a' ? S.akademie[activeEnemyIdx] : S.enemies[activeEnemyIdx];
   if (!e || !e.loot) return;
-  lootState = {enemy:e, results:[], nextChance:75, phase:'splitter', cardRevealed:false};
+  const isElite = e.elite === true;
+  lootState = {enemy:e, results:[], nextChance:75, phase:'splitter', cardRevealed:false, isElite, eliteBonusDone:false};
   document.getElementById('loot-overlay').style.display='block';
-  document.getElementById('loot-title').textContent = e.name;
+  document.getElementById('loot-title').textContent = (isElite ? '⚡ ELITE — ' : '') + e.name;
+  document.getElementById('loot-title').style.color = isElite ? '#ffaa00' : 'var(--gold)';
   document.getElementById('loot-result').style.display='none';
   document.getElementById('spin-again-wrap').style.display='none';
   document.getElementById('loot-all-results').innerHTML='';
@@ -2083,16 +2137,26 @@ function closeLoot() {
 
 function rollResult(phase) {
   const e = lootState.enemy;
+  const isElite = lootState.isElite;
   if (phase === 'splitter') {
     const sp = e.loot.splitter;
     const typChance = {'Schwach':75,'Mittel':50,'Stark':40,'Elite':40};
     const chance = typChance[sp?.typ] || sp?.chance || 50;
     return Math.random()*100 < chance
-      ? {won:true, label:sp?.name||'Splitter', icon:'✦', detail:`Skill-Fragment · ${sp?.typ||''} — Fähigkeit: ${sp?.name||''}`, color:'#44ffaa'}
-      : {won:false, label:'Kein Splitter', icon:'💨', detail:'', color:'#444455'};
+      ? {won:true, label:sp?.name||'Splitter', icon:'✦', detail:'Fähigkeitssplitter', color:'#44ffaa', splitterCount: isElite ? 5 : 1}
+      : {won:false, label:'Kein Splitter', icon:'💨', detail:'', color:'#444455', splitterCount:0};
   } else {
     const drops = e.loot.drops || [];
-    const won = drops.filter(d => Math.random()*100 < d.chance);
+    // for elite: scale chances (kern 1%→5%, others proportionally higher)
+    const scaledDrops = drops.map(d => {
+      if (!isElite) return d;
+      if (d.typ==='Kern') return {...d, chance: Math.min(99, d.chance * 5)};
+      // scale by rarity — rarer = bigger boost
+      const rarityMult = {'Gewöhnlich':1.3,'Selten':1.6,'Episch':2.0,'Legendär':2.5,'Mystisch':3.0};
+      const mult = rarityMult[d.seltenheit] || 1.4;
+      return {...d, chance: Math.min(99, Math.round(d.chance * mult))};
+    });
+    const won = scaledDrops.filter(d => Math.random()*100 < d.chance);
     if (!won.length) return {won:false, label:'Nichts', icon:'💨', detail:'', color:'#333344'};
     const d = won[Math.floor(Math.random()*won.length)];
     const color = d.typ==='Kern' ? '#ff4444' : (RARITY_COLORS[d.seltenheit]||'#888899');
@@ -2107,22 +2171,19 @@ function rollResult(phase) {
 
 function buildDecoys(phase, real) {
   const e = lootState.enemy;
+  const isElite = lootState.isElite;
   const pool = [];
   if (phase==='splitter') {
     const sp = e.loot.splitter;
     const typChance = {'Schwach':75,'Mittel':50,'Stark':40,'Elite':40};
     const chance = typChance[sp?.typ] || 50;
-    // out of 4 cards total, how many should be splitter?
-    // e.g. 75% → 3 splitter + 1 kein; 50% → 2+2; 40% → 1.6≈2+2; 25%→1+3
-    const splitterCards = Math.round(chance / 25); // 75→3, 50→2, 40→2, 25→1
+    const splitterCards = Math.round(chance / 25);
     const nothingCards = 4 - splitterCards;
-    // fill pool with 3 decoys (real is added separately)
-    // if real.won: need (splitterCards-1) more splitter decoys + nothingCards nothing decoys
-    // if real.lost: need splitterCards splitter decoys + (nothingCards-1) nothing decoys
+    const splitterCount = isElite ? 5 : 1;
     const extraSplitters = real.won ? splitterCards - 1 : splitterCards;
-    const extraNothing   = real.won ? nothingCards     : nothingCards - 1;
-    for(let i=0;i<extraSplitters;i++) pool.push({label:'✦ Splitter', icon:'✦', color:'#44ffaa', detail:'Skill-Fragment'});
-    for(let i=0;i<extraNothing;i++)   pool.push({label:'Kein Splitter', icon:'💨', color:'#333344', detail:''});
+    const extraNothing   = real.won ? nothingCards : nothingCards - 1;
+    for(let i=0;i<extraSplitters;i++) pool.push({label:sp?.name||'Splitter', icon:'✦', color:'#44ffaa', detail:'Fähigkeitssplitter', splitterCount, won:true});
+    for(let i=0;i<extraNothing;i++)   pool.push({label:'Kein Splitter', icon:'💨', color:'#333344', detail:'', splitterCount:0, won:false});
   } else {
     (e.loot.drops||[]).forEach(d => {
       if (d.name !== real.label) {
@@ -2205,12 +2266,38 @@ function showResult(card) {
 
   if (isWin && card.detail !== undefined) {
     if(!S.inventory) S.inventory=[];
-    S.inventory.push({icon:card.icon, name:card.label, detail:card.detail||'', from:lootState.enemy.name, date:new Date().toLocaleDateString('de-DE')});
-    lootState.results.push(card);
+    // for splitter: add multiple if elite
+    const count = card.splitterCount || 1;
+    for(let i=0;i<count;i++) {
+      S.inventory.push({
+        icon: card.icon,
+        name: card.label,
+        detail: card.detail || '',
+        from: lootState.enemy.name,
+        date: new Date().toLocaleDateString('de-DE')
+      });
+    }
+    lootState.results.push({...card, count, label: count > 1 ? `${card.label} ×${count}` : card.label});
     persist(); renderAllResults();
   }
 
   if (lootState.phase==='splitter') {
+    lootState.phase='loot';
+    // elite: after splitter, offer 50% bonus for 5 more
+    if (lootState.isElite && isWin && !lootState.eliteBonusDone) {
+      lootState.eliteBonusDone = true;
+      setTimeout(()=>{
+        document.getElementById('spin-again-wrap').style.display='block';
+        document.getElementById('spin-again-chance').textContent='⚡ Elite-Bonus: 50% Chance auf 5 weitere Splitter!';
+        document.getElementById('spin-again-btn').textContent='⚡ BONUS WÜRFELN (50%)';
+        lootState.nextChance = 50;
+        lootState.phase = 'splitter-bonus';
+      }, 800);
+    } else {
+      lootState.nextChance=100;
+      setTimeout(()=>showCards('loot'), 1400);
+    }
+  } else if (lootState.phase === 'splitter-bonus') {
     lootState.phase='loot';
     lootState.nextChance=100;
     setTimeout(()=>showCards('loot'), 1400);
@@ -2226,6 +2313,23 @@ function showResult(card) {
 }
 
 function spinAgain() {
+  if (lootState.phase === 'splitter-bonus') {
+    document.getElementById('spin-again-wrap').style.display='none';
+    if (Math.random() < 0.5) {
+      const sp = lootState.enemy?.loot?.splitter;
+      const spName = sp?.name || 'Splitter';
+      if(!S.inventory) S.inventory=[];
+      for(let i=0;i<5;i++) S.inventory.push({icon:'✦', name:spName, detail:'Fähigkeitssplitter', from:lootState.enemy.name, date:new Date().toLocaleDateString('de-DE')});
+      lootState.results.push({icon:'✦', label:`${spName} ×5`, detail:'Fähigkeitssplitter · Elite Bonus', color:'#ffaa00', count:5});
+      persist(); renderAllResults();
+      toast('⚡ Elite Bonus! +5 Splitter!');
+    } else {
+      toast('Kein Bonus-Splitter 💨');
+    }
+    lootState.phase='loot'; lootState.nextChance=100;
+    setTimeout(()=>showCards('loot'), 600);
+    return;
+  }
   if (lootState.nextChance===100 || Math.random()*100 < lootState.nextChance) {
     document.getElementById('spin-again-wrap').style.display='none';
     showCards('loot');
@@ -2243,10 +2347,11 @@ function renderAllResults() {
     lootState.results.map(r=>`
       <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:10px;background:var(--card);border:1px solid ${r.color||'var(--border)'};margin-bottom:6px">
         <span style="font-size:1.3rem">${r.icon}</span>
-        <div>
+        <div style="flex:1">
           <div style="font-size:0.85rem;font-weight:600;color:${r.color||'var(--text)'}">${r.label}</div>
           <div style="font-size:0.72rem;color:var(--dim)">${r.detail}</div>
         </div>
+        ${(r.count||1)>1?`<span style="background:rgba(212,168,75,0.2);border:1px solid rgba(212,168,75,0.5);color:var(--gold);font-size:0.75rem;font-weight:700;padding:2px 8px;border-radius:8px">×${r.count}</span>`:''}
       </div>`).join('');
 }
 
