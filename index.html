@@ -1604,6 +1604,9 @@ function importExcel() {
   try {
     const parsed = JSON.parse(raw);
     if (parsed.myStats) {
+      Object.keys(parsed.myStats).forEach(k => {
+        parsed.myStats[k] = Math.round(parsed.myStats[k]);
+      });
       Object.assign(S.myStats, parsed.myStats);
       // update hpMax from leben stat
       if (parsed.myStats.leben) S.hpMax = parsed.myStats.leben;
@@ -1614,7 +1617,15 @@ function importExcel() {
       S.hp = Math.min(S.hp, S.hpMax);
       S.mp = Math.min(S.mp, S.mpMax);
     }
-    if (parsed.akademie) S.akademie = parsed.akademie;
+    if (parsed.akademie) {
+      S.akademie = parsed.akademie.map(c => {
+        const rounded = {...c};
+        ['leben','staerke','magie','intel','geschw','ausdauer'].forEach(k => {
+          if (rounded[k] !== undefined) rounded[k] = Math.round(rounded[k]);
+        });
+        return rounded;
+      });
+    }
     persist(); render(); renderAkademie(); renderEnemySelect();
     // always update visible stat fields
     STAT_KEYS.forEach(k => {
