@@ -1442,16 +1442,6 @@ function collectGroup() {
   });
 }
 
-function deleteGroupMember(i) {
-  collectGroup();
-  S.group.members.splice(i, 1);
-  while (S.group.members.length < 3) {
-    S.group.members.push({name:'Mitglied '+(S.group.members.length+1),hp:100,hpMax:100,hpRegenAmt:1,hpRegenInterval:60,staerke:0,magie:0,leben:0,geschw:0,ausdauer:0,intel:0});
-  }
-  if (S.group.memberActive[i]) S.group.memberActive[i] = false;
-  persist(); loadGroupEditor(); renderGroupBars();
-}
-
 function importGroupMember() {
   const raw = document.getElementById('group-import-field').value.trim();
   if (!raw) { toast('Bitte Import-Text einfügen'); return; }
@@ -1705,23 +1695,17 @@ function renderPresets() {
       const i=arr.indexOf(p);
       const key=`${type}_${i}`;
       const drainOn=p.type==='drain'&&!!drainTimers[key];
-      const mastered = type==='mp' && isMastered(p);
-      const cost = type==='mp' ? masteryDiscount(p) : p.val;
+      const mastered=type==='mp'&&isMastered(p);
+      const cost=type==='mp'?masteryDiscount(p):p.val;
       const cls=p.type==='drain'?(drainOn?`${type}-drain-on`:`${type}-p`):`${type}-p`;
       const val=p.type==='drain'
-        ? `${drainOn?'⏹':'▶'} ${cost}/${p.interval}s${mastered?' ✦':''}`
-        : `−${cost}${type==='hp'&&p.crit?' ⚔':''}${mastered?' ✦':''}`;
-      const masteryStyle = mastered
-        ? 'box-shadow:0 0 10px rgba(212,168,75,0.5),0 0 20px rgba(212,168,75,0.2);border-color:rgba(212,168,75,0.6);'
-        : '';
-      const hasDesc=p.desc&&p.desc.trim().length>0;
-      return `<div style="display:flex;flex-direction:column;gap:0">
-        <button class="preset-btn ${cls}" onclick="usePreset('${type}',${i})" style="border-radius:${hasDesc?'14px 14px 0 0':'14px'};${masteryStyle}">
-          <span class="p-name">${p.name}</span>
-          <span class="p-val">${val}</span>
-        </button>
-        ${hasDesc?'<button onclick="toggleDesc(\'desc-'+type+'-'+i+'\')" style="background:rgba(255,255,255,0.03);border:1px solid var(--border);border-top:none;border-radius:0 0 10px 10px;padding:4px;color:var(--dim);font-size:0.65rem;cursor:pointer;touch-action:manipulation">▼ Info</button><div id="desc-'+type+'-'+i+'" style="display:none;background:var(--card2);border:1px solid var(--border);border-top:none;border-radius:0 0 10px 10px;padding:8px 10px;font-size:0.75rem;color:var(--dim);font-style:italic">'+p.desc+'</div>':''}
-      </div>`;
+        ?`${drainOn?'⏹':'▶'} ${cost}/${p.interval}s${mastered?' ✦':''}`
+        :`−${cost}${type==='hp'&&p.crit?' ⚔':''}${mastered?' ✦':''}`;
+      const masteryStyle=mastered?'box-shadow:0 0 10px rgba(212,168,75,0.5),0 0 20px rgba(212,168,75,0.2);border-color:rgba(212,168,75,0.6);':'';
+      return `<button class="preset-btn ${cls}" onclick="usePreset('${type}',${i})" style="${masteryStyle}">
+        <span class="p-name">${p.name}</span>
+        <span class="p-val">${val}</span>
+      </button>`;
     }).join('');
     document.getElementById(`${type}-presets`).innerHTML=html;
     if(type==='mp'){const el2=document.getElementById('mp-presets2');if(el2)el2.innerHTML=html;}
@@ -1780,33 +1764,84 @@ function loadSettingsUI() {
     }
   }
 
-  // presets
-  ['mp','hp'].forEach(type=>{
-    const arr=type==='hp'?S.hpPresets:S.mpPresets;
-    document.getElementById(`${type}-ped`).innerHTML=arr.map((p,i)=>{
-      const isOnce=p.type!=='drain';
-      const showCrit=type==='hp'&&isOnce;
-      return `<div class="prow" style="flex-wrap:wrap;gap:6px;margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--border)">
-        <input type="text" class="pname-inp" id="${type}-pn${i}" value="${p.name.replace(/"/g,'&quot;')}" placeholder="Name" style="flex:1;min-width:100px">
-        <input type="number" class="pval-inp" id="${type}-pv${i}" value="${p.val}" min="0.1" step="0.1" inputmode="decimal">
-        <div class="dtype-toggle">
-          <button class="dtype-btn ${isOnce?'sel-once':''}" onclick="setDType('${type}',${i},'once')">Einmalig</button>
-          <button class="dtype-btn ${!isOnce?'sel-drain':''}" onclick="setDType('${type}',${i},'drain')">Drain</button>
+  const MAGIC_TYPES = ['Neutral','🔥 Feuer','❄️ Eis','🌊 Wasser','⚡ Donner','☀️ Licht','🌑 Schatten','🌪️ Wind','🌍 Erde'];
+
+  // mp presets — grouped by magic type, sorted by cost
+  const mpArr = S.mpPresets;
+  const grouped = {};
+  mpArr.forEach((p,i)=>{
+    const typ = p.magieTyp || 'Neutral';
+    if (!grouped[typ]) grouped[typ] = [];
+    grouped[typ].push({p,i});
+  });
+  // sort each group by cost
+  Object.keys(grouped).forEach(k => grouped[k].sort((a,b)=>a.p.val-b.p.val));
+
+  const renderMpPreset = (p,i) => {
+    const isOnce = p.type!=='drain';
+    return `<div class="prow" style="flex-wrap:wrap;gap:6px;margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--border)">
+      <input type="text" class="pname-inp" id="mp-pn${i}" value="${p.name.replace(/"/g,'&quot;')}" placeholder="Name" style="flex:1;min-width:100px">
+      <input type="number" class="pval-inp" id="mp-pv${i}" value="${p.val}" min="0.1" step="0.1" inputmode="decimal">
+      <div class="dtype-toggle">
+        <button class="dtype-btn ${isOnce?'sel-once':''}" onclick="setDType('mp',${i},'once')">Einmalig</button>
+        <button class="dtype-btn ${!isOnce?'sel-drain':''}" onclick="setDType('mp',${i},'drain')">Drain</button>
+      </div>
+      ${!isOnce?`<div style="display:flex;align-items:center;gap:6px;width:100%">
+        <span style="font-size:0.75rem;color:var(--dim)">alle</span>
+        <input type="number" class="pval-inp" id="mp-pp${i}" value="${p.interval||1}" min="1" step="1" inputmode="numeric">
+        <span style="font-size:0.75rem;color:var(--dim)">Sek</span>
+      </div>`:''}
+      <select id="mp-ptyp${i}" style="width:100%;background:var(--card2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:0.78rem;padding:7px 10px;outline:none">
+        ${MAGIC_TYPES.map(t=>`<option value="${t}" ${(p.magieTyp||'Neutral')===t?'selected':''}>${t}</option>`).join('')}
+      </select>
+      <textarea id="mp-pdesc${i}" placeholder="Beschreibung (optional)" style="width:100%;background:var(--card2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:0.78rem;padding:8px 10px;outline:none;font-family:'Inter',sans-serif;resize:none;min-height:50px">${p.desc||''}</textarea>
+      <label style="display:flex;align-items:center;gap:8px;width:100%;cursor:pointer;font-size:0.8rem;color:var(--dim)">
+        <input type="checkbox" id="mp-pvis${i}" ${p.visible!==false?'checked':''} style="accent-color:var(--mp);width:16px;height:16px">
+        <span>Im Tracker anzeigen</span>
+      </label>
+    </div>`;
+  };
+
+  // render grouped
+  const mpPed = document.getElementById('mp-ped');
+  if (mpPed) {
+    mpPed.innerHTML = Object.entries(grouped).map(([typ, items])=>`
+      <div style="margin-bottom:10px">
+        <div onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'" style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:var(--card2);border:1px solid var(--border);border-radius:10px;cursor:pointer;margin-bottom:6px">
+          <span style="font-size:0.78rem;color:var(--mp);font-family:'Cinzel',serif;letter-spacing:0.08em">${typ}</span>
+          <span style="color:var(--dim);font-size:0.75rem">${items.length} Fähigkeit${items.length!==1?'en':''} ▼</span>
         </div>
-        <div id="${type}-pi${i}" style="display:${!isOnce?'flex':'none'};align-items:center;gap:6px;width:100%">
+        <div style="display:none">
+          ${items.map(({p,i})=>renderMpPreset(p,i)).join('')}
+        </div>
+      </div>`).join('') || '<p style="color:var(--dim);font-size:0.8rem">Noch keine Mana-Presets</p>';
+  }
+
+  // hp presets — unchanged
+  const hpArr = S.hpPresets;
+  document.getElementById('hp-ped').innerHTML=hpArr.map((p,i)=>{
+    const isOnce=p.type!=='drain';
+    const showCrit=isOnce;
+      return `<div class="prow" style="flex-wrap:wrap;gap:6px;margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--border)">
+        <input type="text" class="pname-inp" id="hp-pn${i}" value="${p.name.replace(/"/g,'&quot;')}" placeholder="Name" style="flex:1;min-width:100px">
+        <input type="number" class="pval-inp" id="hp-pv${i}" value="${p.val}" min="0.1" step="0.1" inputmode="decimal">
+        <div class="dtype-toggle">
+          <button class="dtype-btn ${isOnce?'sel-once':''}" onclick="setDType('hp',${i},'once')">Einmalig</button>
+          <button class="dtype-btn ${!isOnce?'sel-drain':''}" onclick="setDType('hp',${i},'drain')">Drain</button>
+        </div>
+        <div id="hp-pi${i}" style="display:${!isOnce?'flex':'none'};align-items:center;gap:6px;width:100%">
           <span style="font-size:0.75rem;color:var(--dim)">alle</span>
-          <input type="number" class="pval-inp" id="${type}-pp${i}" value="${p.interval||1}" min="1" step="1" inputmode="numeric">
+          <input type="number" class="pval-inp" id="hp-pp${i}" value="${p.interval||1}" min="1" step="1" inputmode="numeric">
           <span style="font-size:0.75rem;color:var(--dim)">Sek</span>
         </div>
-        <textarea id="${type}-pdesc${i}" placeholder="Beschreibung (optional)" style="width:100%;background:var(--card2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:0.78rem;padding:8px 10px;outline:none;font-family:'Inter',sans-serif;resize:none;min-height:50px">${p.desc||''}</textarea>
+        <textarea id="hp-pdesc${i}" placeholder="Beschreibung (optional)" style="width:100%;background:var(--card2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:0.78rem;padding:8px 10px;outline:none;font-family:'Inter',sans-serif;resize:none;min-height:50px">${p.desc||''}</textarea>
         <label style="display:flex;align-items:center;gap:8px;width:100%;cursor:pointer;font-size:0.8rem;color:var(--dim)">
-          <input type="checkbox" id="${type}-pvis${i}" ${p.visible!==false?'checked':''} style="accent-color:var(--mp);width:16px;height:16px">
+          <input type="checkbox" id="hp-pvis${i}" ${p.visible!==false?'checked':''} style="accent-color:var(--mp);width:16px;height:16px">
           <span>Im Tracker anzeigen</span>
         </label>
-        ${showCrit?'<label style="display:flex;align-items:center;gap:8px;width:100%;cursor:pointer;font-size:0.8rem;color:var(--dim)"><input type="checkbox" id="'+type+'-pc'+i+'" '+(p.crit?'checked':'')+'style="accent-color:var(--hp);width:16px;height:16px"><span>⚔ Kritischer Treffer möglich</span></label>':''}
+        ${showCrit?'<label style="display:flex;align-items:center;gap:8px;width:100%;cursor:pointer;font-size:0.8rem;color:var(--dim)"><input type="checkbox" id="hp-pc'+i+'" '+(p.crit?'checked':'')+'style="accent-color:var(--hp);width:16px;height:16px"><span>⚔ Kritischer Treffer möglich</span></label>':''}
       </div>`;
     }).join('');
-  });
 
   // enemies
   document.getElementById('enemy-ped').innerHTML=S.enemies.map((e,i)=>`
@@ -2039,16 +2074,21 @@ function setDType(type,i,dtype) {
 
 function collectAll() {
   // presets
-  ['mp','hp'].forEach(type=>{
-    const arr=type==='hp'?S.hpPresets:S.mpPresets;
-    arr.forEach((p,i)=>{
-      p.name=document.getElementById(`${type}-pn${i}`)?.value||p.name;
-      p.val=parseFloat(document.getElementById(`${type}-pv${i}`)?.value)||p.val;
-      p.interval=parseInt(document.getElementById(`${type}-pp${i}`)?.value)||p.interval||1;
-      p.desc=document.getElementById(`${type}-pdesc${i}`)?.value||'';
-      p.visible=document.getElementById(`${type}-pvis${i}`)?.checked!==false;
-      if(type==='hp') p.crit=document.getElementById(`hp-pc${i}`)?.checked||false;
-    });
+  S.mpPresets.forEach((p,i)=>{
+    p.name=document.getElementById(`mp-pn${i}`)?.value||p.name;
+    p.val=parseFloat(document.getElementById(`mp-pv${i}`)?.value)||p.val;
+    p.interval=parseInt(document.getElementById(`mp-pp${i}`)?.value)||p.interval||1;
+    p.desc=document.getElementById(`mp-pdesc${i}`)?.value||'';
+    p.visible=document.getElementById(`mp-pvis${i}`)?.checked!==false;
+    p.magieTyp=document.getElementById(`mp-ptyp${i}`)?.value||'Neutral';
+  });
+  S.hpPresets.forEach((p,i)=>{
+    p.name=document.getElementById(`hp-pn${i}`)?.value||p.name;
+    p.val=parseFloat(document.getElementById(`hp-pv${i}`)?.value)||p.val;
+    p.interval=parseInt(document.getElementById(`hp-pp${i}`)?.value)||p.interval||1;
+    p.desc=document.getElementById(`hp-pdesc${i}`)?.value||'';
+    p.visible=document.getElementById(`hp-pvis${i}`)?.checked!==false;
+    p.crit=document.getElementById(`hp-pc${i}`)?.checked||false;
   });
   // enemies
   S.enemies.forEach((e,i)=>{
