@@ -638,6 +638,7 @@ body::before {
       </div>
       <div class="set-section-body" id="sec-monster" style="display:none">
         <p style="font-size:0.75rem;color:var(--dim);margin-bottom:12px;font-style:italic">Füge den Text mit VITALIS_IMPORT: aus dem Monster-Chat ein. Enthält der Text auch VITALIS_LOOT: wird die Loot-Tabelle automatisch gespeichert.</p>
+        <button onclick="startQrScanner('monster')" style="width:100%;padding:13px;border-radius:12px;background:rgba(212,168,75,0.1);border:1px solid rgba(212,168,75,0.4);color:var(--gold);font-family:'Inter',sans-serif;font-size:0.85rem;font-weight:600;cursor:pointer;margin-bottom:10px;touch-action:manipulation">📷 QR-Code scannen</button>
         <textarea id="monster-import-field" placeholder="VITALIS_IMPORT:{...} hier einfügen..." style="width:100%;background:var(--card2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:0.75rem;padding:10px;outline:none;font-family:'Inter',sans-serif;resize:none;min-height:60px;margin-bottom:8px"></textarea>
         <button onclick="importMonster()" style="width:100%;padding:13px;border-radius:12px;background:rgba(255,140,0,0.08);border:1px solid rgba(255,140,0,0.3);color:var(--enemy);font-family:'Inter',sans-serif;font-size:0.85rem;font-weight:600;cursor:pointer;touch-action:manipulation">👾 Monster hinzufügen</button>
       </div>
@@ -706,7 +707,7 @@ body::before {
       </div>
       <div class="set-section-body" id="sec-excel" style="display:none">
         <p style="font-size:0.75rem;color:var(--dim);margin-bottom:12px;font-style:italic">Füge den Text aus deinem Excel-Makro ein — oder scanne den QR-Code direkt vom Bildschirm</p>
-        <button onclick="startQrScanner()" style="width:100%;padding:13px;border-radius:12px;background:rgba(212,168,75,0.1);border:1px solid rgba(212,168,75,0.4);color:var(--gold);font-family:'Inter',sans-serif;font-size:0.85rem;font-weight:600;cursor:pointer;margin-bottom:10px;touch-action:manipulation">📷 QR-Code scannen</button>
+        <button onclick="startQrScanner('excel')" style="width:100%;padding:13px;border-radius:12px;background:rgba(212,168,75,0.1);border:1px solid rgba(212,168,75,0.4);color:var(--gold);font-family:'Inter',sans-serif;font-size:0.85rem;font-weight:600;cursor:pointer;margin-bottom:10px;touch-action:manipulation">📷 QR-Code scannen</button>
         <textarea id="excel-import-field" placeholder="Export-Text hier einfügen..." style="width:100%;background:var(--card2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:0.75rem;padding:10px;outline:none;font-family:'Inter',sans-serif;resize:none;min-height:60px;margin-bottom:8px"></textarea>
         <button onclick="importExcel()" style="width:100%;padding:13px;border-radius:12px;background:rgba(77,255,136,0.08);border:1px solid rgba(77,255,136,0.3);color:var(--green);font-family:'Inter',sans-serif;font-size:0.85rem;font-weight:600;cursor:pointer;touch-action:manipulation">📥 Importieren</button>
       </div>
@@ -1776,9 +1777,10 @@ function importExcel() {
 }
 
 // ── QR SCANNER ──
-let qrStream = null, qrRAF = null;
+let qrStream = null, qrRAF = null, qrScanMode = 'excel';
 
-function startQrScanner() {
+function startQrScanner(mode) {
+  qrScanMode = mode || 'excel';
   const overlay = document.getElementById('qr-scan-overlay');
   const video = document.getElementById('qr-video');
   const statusEl = document.getElementById('qr-scan-status');
@@ -1788,7 +1790,14 @@ function startQrScanner() {
   }
   statusEl.textContent = 'Kamera wird gestartet…';
   overlay.style.display = 'block';
-  navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}})
+  navigator.mediaDevices.getUserMedia({
+    video: {
+      facingMode: {ideal:'environment'},
+      width: {ideal:1920},
+      height: {ideal:1080},
+      advanced: [{focusMode:'continuous'}]
+    }
+  })
     .then(stream => {
       qrStream = stream;
       video.srcObject = stream;
@@ -1796,9 +1805,19 @@ function startQrScanner() {
       qrRAF = requestAnimationFrame(qrScanLoop);
     })
     .catch(err => {
-      statusEl.textContent = '⚠ Kein Kamerazugriff';
-      toast('⚠ Kamera verweigert oder nicht verfügbar');
-      setTimeout(stopQrScanner, 1500);
+      // fallback: retry with minimal constraints in case the device rejects the detailed ones
+      navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}})
+        .then(stream => {
+          qrStream = stream;
+          video.srcObject = stream;
+          statusEl.textContent = 'QR-Code in den Rahmen halten…';
+          qrRAF = requestAnimationFrame(qrScanLoop);
+        })
+        .catch(err2 => {
+          statusEl.textContent = '⚠ Kein Kamerazugriff';
+          toast('⚠ Kamera verweigert oder nicht verfügbar');
+          setTimeout(stopQrScanner, 1500);
+        });
     });
 }
 
@@ -1812,12 +1831,12 @@ function qrScanLoop() {
   }
   canvas.width = video.videoWidth;
   canvas.height = video.videoHeight;
-  const ctx = canvas.getContext('2d');
+  const ctx = canvas.getContext('2d', {willReadFrequently:true});
   ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
   let code = null;
   try {
     const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    code = jsQR(imgData.data, imgData.width, imgData.height);
+    code = jsQR(imgData.data, imgData.width, imgData.height, {inversionAttempts:'attemptBoth'});
   } catch(e) {}
   if (code && code.data) {
     onQrDecoded(code.data);
@@ -1830,9 +1849,15 @@ function onQrDecoded(text) {
   const statusEl = document.getElementById('qr-scan-status');
   if (statusEl) statusEl.textContent = '✓ Erkannt!';
   stopQrScanner();
-  const field = document.getElementById('excel-import-field');
-  if (field) field.value = text;
-  importExcel();
+  if (qrScanMode === 'monster') {
+    const field = document.getElementById('monster-import-field');
+    if (field) field.value = text;
+    importMonster();
+  } else {
+    const field = document.getElementById('excel-import-field');
+    if (field) field.value = text;
+    importExcel();
+  }
 }
 
 function stopQrScanner() {
