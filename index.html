@@ -404,6 +404,11 @@ body::before {
     <div class="presets-grid" id="mp-presets"></div>
 
     <div class="divider"></div>
+    <p class="sec-title">🧪 Tränke</p>
+    <p style="font-size:0.72rem;color:var(--dim);margin-bottom:12px;font-style:italic">Heiltränke wirken sofort · Buff-Tränke laufen für eine Weile</p>
+    <div class="presets-grid" id="potion-list"></div>
+
+    <div class="divider"></div>
     <div class="log-box">
       <p class="sec-title">Kampflog</p>
       <div class="log-scroll" id="log-list"><span style="color:var(--dim);font-size:.8rem;font-style:italic">Noch nichts passiert…</span></div>
@@ -597,6 +602,21 @@ body::before {
       </div>
     </div>
 
+    <!-- TRÄNKE -->
+    <div class="set-card">
+      <div class="set-section-header" onclick="toggleSection('sec-potions')">
+        <span>🧪 Tränke</span><span class="set-arrow" id="arr-sec-potions">▼</span>
+      </div>
+      <div class="set-section-body" id="sec-potions" style="display:none">
+        <p style="font-size:0.72rem;color:var(--dim);margin-bottom:14px;font-style:italic">Heilung = sofort % vom Max-Leben | Buff (Mana) = % mehr Mana & schnellere Regeneration für X Minuten</p>
+        <div id="potion-ped"></div>
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <button class="add-preset-btn" onclick="addPotion()">+ Hinzufügen</button>
+          <button class="rm-preset-btn"  onclick="rmPotion()">− Entfernen</button>
+        </div>
+      </div>
+    </div>
+
     <!-- GEGNER -->
     <div class="set-card">
       <div class="set-section-header" onclick="toggleSection('sec-enemy')">
@@ -696,7 +716,7 @@ body::before {
 
 <!-- TAB BAR -->
 <nav class="tabbar">
-  <button class="tab-item active" id="tab-tracker" onclick="showTab('tracker',this)"><span class="icon">⚔️</span>Tracker</button>
+  <button class="tab-item active" id="tab-tracker" onclick="showTab('tracker',this)"><span class="icon">🧪</span>Tränke</button>
   <button class="tab-item" id="tab-enemy" onclick="showTab('enemy',this)"><span class="icon">👹</span>Gegner</button>
   <button class="tab-item" id="tab-settings" onclick="showTab('settings',this)"><span class="icon">⚙️</span>Einst.</button>
 </nav>
@@ -787,6 +807,14 @@ let S = {
   myStats:{staerke:0,magie:0,leben:0,geschw:0,ausdauer:0,intel:0},
   akademie:[],
   inventory:[],
+  potions:[
+    {name:'Kleiner Heiltrank', type:'heal', value:5,  visible:true},
+    {name:'Heiltrank',         type:'heal', value:10, visible:true},
+    {name:'Großer Heiltrank',  type:'heal', value:20, visible:true},
+    {name:'Manatrank',         type:'buff', stat:'mp', value:25, duration:600, visible:true},
+    {name:'Mannaquelle',       type:'buff', stat:'mp', value:50, duration:600, visible:true},
+  ],
+  activeBuffs:{},
   group: {
     active: false,
     memberActive: [true, false, false],
@@ -839,6 +867,14 @@ function hydrate() {
       {name:'Mitglied 3',hp:100,hpMax:100,hpRegenAmt:1,hpRegenInterval:60,staerke:0,magie:0,leben:0,geschw:0,ausdauer:0,intel:0},
     ]};
     if (!S.group.memberActive) S.group.memberActive = [true, false, false];
+    if (!S.potions) S.potions = [
+      {name:'Kleiner Heiltrank', type:'heal', value:5,  visible:true},
+      {name:'Heiltrank',         type:'heal', value:10, visible:true},
+      {name:'Großer Heiltrank',  type:'heal', value:20, visible:true},
+      {name:'Manatrank',         type:'buff', stat:'mp', value:25, duration:600, visible:true},
+      {name:'Mannaquelle',       type:'buff', stat:'mp', value:50, duration:600, visible:true},
+    ];
+    if (!S.activeBuffs) S.activeBuffs = {};
     S.enemies.forEach(e => { STAT_KEYS.forEach(k => { if(!e[k]) e[k]=0; }); });
     // patch presets with missing fields
     [...S.mpPresets,...S.hpPresets].forEach(p=>{
@@ -869,6 +905,14 @@ function hydrate() {
         });
       }
     }
+    // decay active potion buffs while offline (regardless of the >2s threshold above)
+    if (S.activeBuffs) {
+      Object.keys(S.activeBuffs).forEach(key => {
+        const b = S.activeBuffs[key];
+        b.remaining -= elapsed;
+        if (b.remaining <= 0) delete S.activeBuffs[key];
+      });
+    }
     S.lastUpdate = now;
   } catch(e){}
 }
@@ -887,8 +931,10 @@ function render() {
   document.getElementById('mp-val').innerHTML = `${mp.toFixed(1)} <small>/ ${S.mpMax}</small>`;
   document.getElementById('hp-bar').style.width = `${(hp/S.hpMax)*100}%`;
   document.getElementById('mp-bar').style.width = `${(mp/S.mpMax)*100}%`;
+  const effMp = getEffectiveMpRegen();
+  const mpRegenTxt = `+${effMp.amt}/${effMp.interval===1?'s':effMp.interval+'s'}${effMp.buffed?' ✦':''}`;
   document.getElementById('hp-regen-txt').textContent = S.hpRegenInterval===1?`+${S.hpRegenAmt}/s`:`+${S.hpRegenAmt}/${S.hpRegenInterval}s`;
-  document.getElementById('mp-regen-txt').textContent = S.mpRegenInterval===1?`+${S.mpRegenAmt}/s`:`+${S.mpRegenAmt}/${S.mpRegenInterval}s`;
+  document.getElementById('mp-regen-txt').textContent = mpRegenTxt;
   // sync enemy tab bars
   const hp2=document.getElementById('hp-val2');
   const mp2=document.getElementById('mp-val2');
@@ -901,9 +947,9 @@ function render() {
   const hr2=document.getElementById('hp-regen-txt2');
   const mr2=document.getElementById('mp-regen-txt2');
   if(hr2) hr2.textContent=S.hpRegenInterval===1?`+${S.hpRegenAmt}/s`:`+${S.hpRegenAmt}/${S.hpRegenInterval}s`;
-  if(mr2) mr2.textContent=S.mpRegenInterval===1?`+${S.mpRegenAmt}/s`:`+${S.mpRegenAmt}/${S.mpRegenInterval}s`;
+  if(mr2) mr2.textContent=mpRegenTxt;
 
-  renderBadges(); renderPresets(); renderLog(); renderGroupBars();
+  renderBadges(); renderPresets(); renderLog(); renderGroupBars(); renderPotions();
 }
 
 function renderBadges() {
@@ -917,14 +963,94 @@ function renderBadges() {
 }
 
 // ── REGEN TICK ──
-let lastTick = Date.now(), hpAcc=0, mpAcc=0;
+let lastTick = Date.now(), hpAcc=0;
 function tick() {
   const now=Date.now(), d=(now-lastTick)/1000; lastTick=now;
-  hpAcc+=d; mpAcc+=d;
+  hpAcc+=d;
   if(hpAcc>=S.hpRegenInterval){const t=Math.floor(hpAcc/S.hpRegenInterval);S.hp=Math.min(S.hpMax,S.hp+t*S.hpRegenAmt);hpAcc-=t*S.hpRegenInterval;}
-  if(mpAcc>=S.mpRegenInterval){const t=Math.floor(mpAcc/S.mpRegenInterval);S.mp=Math.min(S.mpMax,S.mp+t*S.mpRegenAmt);mpAcc-=t*S.mpRegenInterval;}
+
+  // mana regen — continuous & buff-aware, so an active buff changes the rate immediately
+  const eff = getEffectiveMpRegen();
+  S.mp = Math.min(S.mpMax, S.mp + (eff.amt/eff.interval)*d);
+
+  // potion buffs ticking down
+  if (S.activeBuffs) {
+    Object.keys(S.activeBuffs).forEach(key => {
+      const b = S.activeBuffs[key];
+      b.remaining -= d;
+      if (b.remaining <= 0) {
+        const p = S.potions[key];
+        addLog(`⏱ ${p?p.name:'Trank'}-Effekt abgelaufen`, 'info');
+        delete S.activeBuffs[key];
+      }
+    });
+  }
+
   tickGroup(d);
   render(); persist();
+}
+
+// ── POTIONS ──
+function getStatBuffBonus(stat) {
+  let bonus = 0;
+  Object.values(S.activeBuffs||{}).forEach(b => { if (b.stat===stat) bonus += b.value; });
+  return bonus; // percent
+}
+
+function getEffectiveMpRegen() {
+  const bonus = getStatBuffBonus('mp')/100;
+  const amt = +(S.mpRegenAmt*(1+bonus)).toFixed(2);
+  const interval = +(Math.max(0.1, S.mpRegenInterval*(1-bonus))).toFixed(2);
+  return {amt, interval, buffed: bonus>0};
+}
+
+function fmtCountdown(s) {
+  s = Math.max(0, Math.round(s));
+  const m = Math.floor(s/60), sec = s%60;
+  return `${m}:${sec.toString().padStart(2,'0')}`;
+}
+
+function renderPotions() {
+  const el = document.getElementById('potion-list');
+  if (!el) return;
+  const visible = S.potions.filter(p=>p.visible!==false);
+  el.innerHTML = visible.map((p)=>{
+    const i = S.potions.indexOf(p);
+    const buff = S.activeBuffs[i];
+    const active = !!buff;
+    const cls = p.type==='buff' ? (active?'mp-drain-on':'mp-p') : 'hp-p';
+    const val = p.type==='heal'
+      ? `+${p.value}% ❤`
+      : (active ? `⏱ ${fmtCountdown(buff.remaining)}` : `+${p.value}% ✦ ${Math.round((p.duration||600)/60)}min`);
+    return `<button class="preset-btn ${cls}" onclick="usePotion(${i})">
+      <span class="p-name">${p.name}</span>
+      <span class="p-val">${val}</span>
+    </button>`;
+  }).join('');
+}
+
+function usePotion(i) {
+  const p = S.potions[i]; if(!p) return;
+  if (p.type === 'heal') {
+    const amt = Math.round(S.hpMax * (p.value/100) * 10) / 10;
+    S.hp = Math.min(S.hpMax, S.hp + amt);
+    addLog(`🧪 ${p.name} +${amt} Leben`, 'pos');
+    toast(`${p.name}: +${amt} Leben`);
+  } else if (p.type === 'buff') {
+    const existing = S.activeBuffs[i];
+    const mins = Math.round((p.duration||600)/60);
+    if (existing) {
+      existing.remaining = p.duration||600;
+      existing.total = p.duration||600;
+      addLog(`🧪 ${p.name} aufgefrischt (${mins} Min)`, 'info');
+      toast(`${p.name} aufgefrischt: ${mins} Min`);
+    } else {
+      S.activeBuffs[i] = {remaining:p.duration||600, total:p.duration||600, stat:p.stat||'mp', value:p.value};
+      addLog(`🧪 ${p.name} aktiviert (+${p.value}% · ${mins} Min)`, 'pos');
+      toast(`${p.name}: +${p.value}% für ${mins} Min`);
+    }
+  }
+  persist(); render();
 }
 
 // ── CRIT ──
@@ -1913,7 +2039,55 @@ function loadSettingsUI() {
       </div>
     </div>`).join('');
 
+  // potions
+  document.getElementById('potion-ped').innerHTML = S.potions.map((p,i)=>{
+    const isHeal = p.type!=='buff';
+    return `<div class="prow" style="flex-wrap:wrap;gap:6px;margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--border)">
+      <input type="text" class="pname-inp" id="pot-pn${i}" value="${p.name.replace(/"/g,'&quot;')}" placeholder="Name" style="flex:1;min-width:100px">
+      <input type="number" class="pval-inp" id="pot-pv${i}" value="${p.value}" min="1" step="1" inputmode="numeric">
+      <span style="font-size:0.75rem;color:var(--dim)">%</span>
+      <div class="dtype-toggle">
+        <button class="dtype-btn ${isHeal?'sel-once':''}" onclick="setPotionType(${i},'heal')">Heilung</button>
+        <button class="dtype-btn ${!isHeal?'sel-drain':''}" onclick="setPotionType(${i},'buff')">Buff (Mana)</button>
+      </div>
+      <div id="pot-durwrap${i}" style="display:${!isHeal?'flex':'none'};align-items:center;gap:6px;width:100%">
+        <span style="font-size:0.75rem;color:var(--dim)">Dauer:</span>
+        <input type="number" class="pval-inp" id="pot-pd${i}" value="${Math.round((p.duration||600)/60)}" min="1" step="1" inputmode="numeric">
+        <span style="font-size:0.75rem;color:var(--dim)">Min</span>
+      </div>
+      <label style="display:flex;align-items:center;gap:8px;width:100%;cursor:pointer;font-size:0.8rem;color:var(--dim)">
+        <input type="checkbox" id="pot-pvis${i}" ${p.visible!==false?'checked':''} style="accent-color:var(--gold);width:16px;height:16px">
+        <span>Im Tränke-Tab anzeigen</span>
+      </label>
+    </div>`;
+  }).join('');
+
   loadGroupEditor();
+}
+
+function setPotionType(i, ptype) {
+  S.potions[i].type = ptype;
+  const row = document.getElementById('potion-ped').children[i];
+  if (row) {
+    row.querySelectorAll('.dtype-btn').forEach(b=>{
+      b.className='dtype-btn';
+      if(b.textContent.trim()==='Heilung'&&ptype==='heal') b.classList.add('sel-once');
+      if(b.textContent.trim().startsWith('Buff')&&ptype==='buff') b.classList.add('sel-drain');
+    });
+  }
+  const dw = document.getElementById(`pot-durwrap${i}`);
+  if (dw) dw.style.display = ptype==='buff' ? 'flex' : 'none';
+}
+
+function addPotion() {
+  collectAll();
+  S.potions.push({name:'Neuer Trank', type:'heal', value:10, duration:600, visible:true});
+  loadSettingsUI();
+}
+function rmPotion() {
+  collectAll();
+  if (S.potions.length>1) S.potions.pop();
+  loadSettingsUI();
 }
 
 function renderInventory() {
@@ -2116,6 +2290,17 @@ function collectAll() {
     const prob = parseInt(document.getElementById(`grp-prob-${i}`)?.value);
     m.attackProb = isNaN(prob) ? null : prob;
   });
+  // potions
+  S.potions.forEach((p,i)=>{
+    p.name = document.getElementById(`pot-pn${i}`)?.value || p.name;
+    p.value = parseFloat(document.getElementById(`pot-pv${i}`)?.value) || p.value;
+    if (p.type === 'buff') {
+      const durMin = parseFloat(document.getElementById(`pot-pd${i}`)?.value);
+      if (durMin) p.duration = Math.round(durMin*60);
+      if (!p.stat) p.stat = 'mp';
+    }
+    p.visible = document.getElementById(`pot-pvis${i}`)?.checked !== false;
+  });
   // my stats
   STAT_KEYS.forEach(k=>{ const v=parseInt(document.getElementById('my-'+k)?.value); if(!isNaN(v)) S.myStats[k]=v; });
   // group
@@ -2159,7 +2344,7 @@ function saveSettings() {
   S.mpRegenAmt=parseFloat(document.getElementById('s-mp-ramt').value)||S.mpRegenAmt;
   S.mpRegenInterval=parseInt(document.getElementById('s-mp-rint').value)||S.mpRegenInterval;
   S.hp=Math.min(S.hp,S.hpMax); S.mp=Math.min(S.mp,S.mpMax);
-  hpAcc=0; mpAcc=0;
+  hpAcc=0;
   persist(); render(); renderEnemySelect(); renderEnemyPanel();
   toast('✓ Gespeichert!');
 }
@@ -2211,6 +2396,7 @@ function showTab(id,btn) {
   btn.classList.add('active');
   if(id==='settings') loadSettingsUI();
   if(id==='enemy') { renderEnemySelect(); renderAkademie(); }
+  if(id==='tracker') renderPotions();
 }
 
 // ── TOAST ──
