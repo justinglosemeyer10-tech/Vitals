@@ -569,6 +569,7 @@ body::before {
           <div class="enemy-stat-inp-wrap"><label>Ausdauer</label><input type="number" class="enemy-stat-inp" id="my-ausdauer" inputmode="numeric"></div>
           <div class="enemy-stat-inp-wrap"><label>Intelligenz</label><input type="number" class="enemy-stat-inp" id="my-intel" inputmode="numeric"></div>
         </div>
+        <button onclick="copyMyStats()" style="margin-top:12px;width:100%;padding:12px;border-radius:12px;background:rgba(212,168,75,0.1);border:1px solid rgba(212,168,75,0.4);color:var(--gold);font-family:'Inter',sans-serif;font-size:0.82rem;font-weight:600;cursor:pointer;touch-action:manipulation">📋 Als Text kopieren</button>
       </div>
     </div>
 
@@ -2458,6 +2459,27 @@ function saveSettings() {
   hpAcc=0;
   persist(); render(); renderEnemySelect(); renderEnemyPanel();
   toast('✓ Gespeichert!');
+}
+
+function copyMyStats() {
+  const text = STAT_KEYS.map((k,i) => `${STAT_LABELS[i]}: ${document.getElementById('my-'+k)?.value || S.myStats[k] || 0}`).join('\n');
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(text).then(()=>toast('✓ Stats kopiert!')).catch(()=>fallbackCopyGeneric(text));
+  } else {
+    fallbackCopyGeneric(text);
+  }
+}
+
+function fallbackCopyGeneric(text) {
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.position = 'fixed';
+  ta.style.left = '-9999px';
+  document.body.appendChild(ta);
+  ta.select();
+  try { document.execCommand('copy'); toast('✓ Kopiert!'); }
+  catch(e) { toast('⚠ Kopieren fehlgeschlagen'); }
+  document.body.removeChild(ta);
 }
 
 function exportData() {
